@@ -1,0 +1,18 @@
+--- a/src/freedreno/vulkan/tu_cmd_buffer.cc	2026-07-03 05:10:06.990078200 +0500
++++ b/src/freedreno/vulkan/tu_cmd_buffer.cc	2026-07-03 05:10:06.990078200 +0500
+@@ -8124,6 +8124,15 @@
+    if (!BITSET_IS_EMPTY(cmd->vk.dynamic_graphics_state.dirty) ||
+        (cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS)) {
+       dynamic_draw_state_dirty = tu_emit_draw_state<CHIP>(cmd);
++      /* UnleashedRecomp: sync CP front-end with ME only for draws that emit
++       * new state other than shader constant / VS param updates - candidate
++       * cheaper placement of the A725 shimmer fix.
++       */
++      if (!BITSET_IS_EMPTY(cmd->vk.dynamic_graphics_state.dirty) ||
++          (cmd->state.dirty & ~(TU_CMD_DIRTY_COMPUTE_DESC_SETS |
++                                TU_CMD_DIRTY_SHADER_CONSTS |
++                                TU_CMD_DIRTY_VS_PARAMS)))
++         cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_WAIT_FOR_ME;
+    }
+ 
+    /* Primitive restart value works in non-indexed draws, we have to disable

@@ -1,0 +1,47 @@
+# ---- Build output ----
+/out/
+build/
+.gradle/
+*.o
+*.obj
+
+# ---- Android build artifacts ----
+android-apk/app/src/main/jniLibs/arm64-v8a/*.so
+local.properties
+*.apk
+*.keystore
+*.jks
+
+# ---- vcpkg (bootstrap it yourself; do not commit the clone/artifacts) ----
+/thirdparty/vcpkg/
+
+# ============================================================
+#  GAME FILES & DERIVED CODE — NEVER COMMIT (copyrighted)
+# ============================================================
+# Raw dump:
+/UnleashedRecompLib/private/*
+!/UnleashedRecompLib/private/PLACE_GAME_FILES_HERE.txt
+# Code XenonRecomp generates from your XEX:
+/UnleashedRecompLib/ppc/ppc_recomp.*.cpp
+/UnleashedRecompLib/ppc/ppc_func_mapping.cpp
+/UnleashedRecompLib/ppc/ppc_config.h
+# Belt & suspenders:
+*.xex
+*.xexp
+shader.ar
+shader_decompressed.ar
+
+# ---- Turnip driver build outputs / scratch ----
+/turnip_unleashed_builds/
+/temp_turnip*/
+/temp_validation_layer_backup/
+
+# ---- Prebuilt capture layer (download from LunarG, do not commit ~68 MB) ----
+libVkLayer_gfxreconstruct.so
+
+# ---- Logs / scratch ----
+logcat_*.txt
+run_log.txt
+pathdebug.txt
+log.txt
+log_prev.txt

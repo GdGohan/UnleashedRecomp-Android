@@ -1,0 +1,14 @@
+Put your OWN legal Sonic Unleashed (Xbox 360) dump in THIS folder:
+
+    default.xex
+    default.xexp      (must match the .xex: same region + Title Update version)
+    shader.ar
+
+These files are NOT included in this repository — they are copyrighted game
+content. The build (XenonRecomp / XenosRecomp host tools) reads them to generate
+UnleashedRecompLib/ppc/ and the shader cache.
+
+If default.xex and default.xexp do not match, XenonRecomp fails with
+"patch file incompatible". Re-check your dump.
+
+See the top-level README.md for the full build steps.
