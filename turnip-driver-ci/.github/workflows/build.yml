@@ -14,6 +14,8 @@ on:
           - wfm-nogenclear
           - wfm-novpcattr
           - wfm-a732
+          - wfm-a710
+          - wfm-univ
           - wfm-smart1
           - wfm-smart2
           - wfm-smart3

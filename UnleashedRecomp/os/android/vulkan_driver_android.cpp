@@ -19,10 +19,15 @@
 #include <sys/stat.h>
 #include <vector>
 
-// The driver that ships inside the APK assets: source-built Mesa 26.1.4 Turnip with the
-// per-draw WAIT_FOR_ME fix compiled in (no TU_DEBUG gate) and Adreno 732 device ids added.
-// Covers a725/a732/a750 (a750 additionally requires MSAA off, which is the Android config
-// default). Extracted to internal storage on first launch. TU_DEBUG must stay "none": on
+// The driver that ships inside the APK assets: source-built Mesa 26.1.4 Turnip ("univ"
+// build, 2026-07-05) with the per-draw WAIT_FOR_ME fix compiled in (no TU_DEBUG gate),
+// Adreno 732 device ids, and custom FD710/FD720/FD722 device entries (blob-trace-derived
+// magic regs, via Vauzi-17/710). Covers a710/a720/a722/a725/a732/a750 (a750 additionally
+// requires MSAA off, which is the Android config default). Extracted to internal storage
+// on first launch. The FILENAME is kept at its historical value on purpose: existing
+// installs have driver_name.txt pointing at it and only re-extract on a size change (the
+// asset carries a trailing size-marker string for exactly that reason) - renaming it would
+// strand updated installs on the old extracted driver. TU_DEBUG must stay "none": on
 // source builds "flushall" enables Mesa's REAL full per-draw flush (huge FPS hit).
 static constexpr const char *BUNDLED_DRIVER_NAME = "vulkan.unleashed26_1_wfm_a732.so";
 static constexpr const char *BUNDLED_DRIVER_ASSET = "turnip/vulkan.unleashed26_1_wfm_a732.so";

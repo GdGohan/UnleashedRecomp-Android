@@ -39,9 +39,12 @@ game, roughly 40–60 FPS depending on GPU / resolution scale.
 | Adreno 725 | SD 7+ Gen 2 | a7xx **gen1** | Main dev target. Playable. Needs per‑draw `CP_WAIT_FOR_ME`. |
 | Adreno 750 | SD 8 Gen 3 | a7xx **gen3** | Playable **with MSAA off** (see below). |
 | Adreno 732 | SD 7+ Gen 3 | binned a735 / gen2 | Brought up via a chip‑id hack; ~60 FPS. |
+| Adreno 710 | SD 6 Gen 1 class | a7xx **gen1** (custom entry) | Playable via community device entries + our WFM fix (see below). |
 
-Other Adreno 6xx/7xx + Android 9+ *should* work (libadrenotools requirement) but
-are untested.
+Adreno **720 / 722** have device entries in the bundled driver too (same
+community source as the a710 one) but no device has been tested yet. Other
+Adreno 6xx/7xx + Android 9+ *should* work (libadrenotools requirement) but are
+untested.
 
 ---
 
@@ -72,23 +75,36 @@ then renders and the game runs.
 
 `android-apk/app/src/main/assets/turnip/vulkan.unleashed26_1_wfm_a732.so`
 (also copied to `driver/` in this repo for convenience) is our **source‑built
-Mesa 26.1.4 Turnip** with:
+Mesa 26.1.4 Turnip** ("univ" build, 2026‑07‑05) with:
 
 - **patch 0001** — an unconditional per‑draw `TU_CMD_FLAG_WAIT_FOR_ME`
   (`CP_WAIT_FOR_ME`) baked into `tu6_emit_flushes()` (no `TU_DEBUG` gate). This
-  fixes the a725 "shimmer" (see findings). Because it is compiled in, **`TU_DEBUG`
-  must stay `none`** — setting `flushall` on a source build enables Mesa's *real*
-  full per‑draw cache flush and tanks the framerate.
+  fixes the a7xx‑gen1 "shimmer" (see findings). Because it is compiled in,
+  **`TU_DEBUG` must stay `none`** — setting `flushall` on a source build enables
+  Mesa's *real* full per‑draw cache flush and tanks the framerate.
 - **patch 0004** — adds the Adreno **732** chip id to the FD735 device entry.
+- **patch 0009** — adds custom **FD710/FD720/FD722** device entries (absent from
+  *all* upstream Mesa); entries and blob‑trace‑derived magic registers from
+  [Vauzi‑17/710](https://github.com/Vauzi-17/710) (see findings).
 
-Covers a725 / a732 / a750. The app extracts it to internal storage on first
-launch and can also import an arbitrary Turnip `.so` dropped into the external
-`driver_import/` folder.
+Covers a710 / a720 / a722 / a725 / a732 / a750. The app extracts it to internal
+storage on first launch and can also import an arbitrary Turnip `.so` dropped
+into the external `driver_import/` folder.
+
+Two packaging quirks worth knowing (both deliberate, see the comment at the top
+of `os/android/vulkan_driver_android.cpp`): the asset **filename stays at its
+historical value** (`..._wfm_a732.so`) because existing installs select the
+driver by that name in `driver_name.txt` and it is never overwritten; and the
+file carries a **trailing `UNLEASHED-UNIV-20260705` marker string**, because the
+app only re‑extracts the asset on a size change and the new build came out
+byte‑identical in size to the old one (ELF section padding absorbed the three
+added device entries).
 
 The driver is built in CI from a fork of the Turnip build scripts:
 **`SansNope/Banners-Turnip`**, branch `unleashed` (a copy of the relevant
 scripts is in `turnip-driver-ci/` here). Variants are selected by the `VARIANT`
-env var (`wfm`, `wfm-a732`, `clean`, …) and Mesa ref by `MESA_REF`.
+env var (`wfm`, `wfm-a732`, `wfm-a710`, `wfm-univ`, `clean`, …) and Mesa ref by
+`MESA_REF` (`wfm-univ` on `mesa-26.1.4` produced the bundled file).
 
 ---
 
@@ -115,6 +131,27 @@ CCU flush was only masking it. **a750 recipe = WFM driver + MSAA off.**
 a732 (SM7675) is absent from Mesa's device table. It shares the "cliffs" kgsl
 core with the a735, so it was brought up by adding its (guessed) chip id to the
 FD735/gen2 entry (patch 0004). Loaded first try; a full level at ~60 FPS.
+
+### Adreno 710 (+720/722) — no upstream Mesa support at all
+An a710 device ran on our a725‑class driver but with **strong** artifacts, while
+a community driver ran it with only **minor** ones. Root cause of the strong
+artifacts: **no Mesa release or even `main` has FD710/FD720/FD722 device
+entries**, so Turnip falls back to a wrong a7xx profile (GMEM geometry, CCU
+count, magic registers). The community driver
+([Vauzi‑17/710](https://github.com/Vauzi-17/710), a fork of
+whitebelyash/AdrenoToolsDrivers) is upstream `main` **plus a script that injects
+custom FD710/720/722 entries** — chip ids, the **gen1** template, and per‑GPU
+magic register tables **derived from real proprietary‑driver command streams**
+(`.rd` traces decoded with Mesa's cffdump). Its embedded git SHA exists in no
+public repo (the script commits locally before building) — beware when trying to
+reproduce a community binary from its version string.
+
+The remaining *minor* artifacts on that community driver were our old gen1
+shimmer (a710 uses the gen1 template — same disease as a725). So the fix was to
+combine the two: Vauzi's entries (**patch 0008** against Mesa `main`, **patch
+0009** backported to 26.1.4 — all register names already exist there) **plus our
+WFM patch 0001**. Validated clean on the a710 device on both bases, and shipped
+in the bundled driver. a720/a722 entries ride along untested.
 
 ### Upstream Mesa bug report
 The per‑draw corruption (both GPUs, with the two‑GPU bisection matrix) is filed
@@ -317,6 +354,9 @@ is not included here.)
 - Upstream: [hedge-dev/UnleashedRecomp](https://github.com/hedge-dev/UnleashedRecomp)
 - Renderer: **plume**; **libadrenotools** (bylaws); **Mesa Turnip** (freedreno)
 - Turnip driver builds: `SansNope/Banners-Turnip` (fork), K11MCH1 AdrenoToolsDrivers
+- Adreno 710/720/722 device entries + blob‑traced magic registers:
+  [Vauzi‑17/710](https://github.com/Vauzi-17/710)
+  (fork of whitebelyash/AdrenoToolsDrivers)
 - Mesa issue: `gitlab.freedesktop.org/mesa/mesa` work item **15792**
 - Another stock‑driver Android fork (Vulkan 1.3+ devices only, no Turnip):
   `winnerspiros/UnleashedRecomp_Android`
