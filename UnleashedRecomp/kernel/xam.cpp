@@ -2,7 +2,10 @@
 #include "xam.h"
 #include "xdm.h"
 #include <hid/hid.h>
+#include <os/logger.h>
 #include <ui/game_window.h>
+#include <ui/achievement_menu.h>
+#include <ui/options_menu.h>
 #include <cpu/guest_thread.h>
 #include <ranges>
 #include <unordered_set>
@@ -462,6 +465,18 @@ uint32_t XamInputGetState(uint32_t userIndex, uint32_t flags, XAMINPUT_STATE* st
             state->Gamepad.wButtons |= XAMINPUT_GAMEPAD_X;
         if (keyboardState[Config::Key_Y])
             state->Gamepad.wButtons |= XAMINPUT_GAMEPAD_Y;
+    }
+
+    // Safety net: START (and the right stick) are only ever meant to be prohibited
+    // while the achievement or options menu is on screen. If that state gets latched
+    // on without either menu visible - which otherwise permanently kills the
+    // START/pause button until the game is restarted - clear it here so input can
+    // recover on its own. The two menus set s_isVisible before prohibiting, so this
+    // never fires mid-open.
+    if (hid::g_prohibitedButtons != 0 && !AchievementMenu::s_isVisible && !OptionsMenu::s_isVisible)
+    {
+        LOGF("Clearing stuck prohibited inputs (0x{:X}) with no menu open", hid::g_prohibitedButtons);
+        hid::SetProhibitedInputs();
     }
 
     state->Gamepad.wButtons &= ~hid::g_prohibitedButtons;

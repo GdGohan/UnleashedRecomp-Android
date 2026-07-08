@@ -71,3 +71,7 @@ public:
     static void SetSideMargins(float width);
     static void Close();
 };
+
+// Returns the atlas UV rectangle (min/max) and texture for a controller button
+// glyph. Shared with the on-screen touch controls overlay.
+std::tuple<std::tuple<ImVec2, ImVec2>, GuestTexture*> GetButtonIcon(EButtonIcon icon);

@@ -29,6 +29,7 @@
 #include <ui/options_menu.h>
 #include <ui/game_window.h>
 #include <ui/black_bar.h>
+#include <ui/touch_controls.h>
 #include <patches/aspect_ratio_patches.h>
 #include <user/config.h>
 #include <sdl_listener.h>
@@ -1399,6 +1400,7 @@ static void CreateImGuiBackend()
     AchievementMenu::Init();
     AchievementOverlay::Init();
     ButtonGuide::Init();
+    TouchControls::Init();
     MessageWindow::Init();
     OptionsMenu::Init();
 #if !defined(__ANDROID__)
@@ -2625,6 +2627,9 @@ static void DrawImGui()
 #endif
     MessageWindow::Draw();
     ButtonGuide::Draw();
+#if defined(__ANDROID__)
+    TouchControls::Draw();
+#endif
     Fader::Draw();
     BlackBar::Draw();
 

@@ -4,6 +4,7 @@
 #include <hid/hid.h>
 #include <os/logger.h>
 #include <ui/game_window.h>
+#include <ui/touch_controls.h>
 #include <kernel/xdm.h>
 #include <app.h>
 
@@ -184,6 +185,11 @@ static void SetControllerInputDevice(Controller* controller)
 {
     g_activeController = controller;
 
+#ifdef __ANDROID__
+    // A physical controller reported input: hide the on-screen touch controls.
+    TouchControls::SetVisible(false);
+#endif
+
     if (App::s_isLoading)
         return;
 
@@ -351,6 +357,16 @@ uint32_t hid::GetState(uint32_t dwUserIndex, XAMINPUT_STATE* pState)
     memset(pState, 0, sizeof(*pState));
 
     pState->dwPacketNumber = packet++;
+
+#ifdef __ANDROID__
+    // While the on-screen touch controls are the active input source, feed their
+    // synthesised state as player 1 (falls through to a physical pad when hidden).
+    if (dwUserIndex == 0 && TouchControls::IsVisible())
+    {
+        pState->Gamepad = TouchControls::GetGamepadState();
+        return ERROR_SUCCESS;
+    }
+#endif
 
     if (!g_activeController)
         return ERROR_DEVICE_NOT_CONNECTED;

@@ -188,6 +188,49 @@ now overridden to None (this silently caused the a750 artifact saga).
 
 ---
 
+## On‑screen touch controls
+
+Phones don't always have a physical gamepad attached, so this fork adds a virtual
+on‑screen controller for Android.
+
+**What it is** — a translucent overlay drawn with the game's own ImGui layer: a
+left analog stick, the A/B/X/Y face buttons, LB/RB shoulders, LT/RT triggers and
+Start/Back. The button glyphs are reused from the existing controller atlas
+(`controller.dds`), so they match the in‑game prompts. Multi‑touch works (e.g.
+move + jump + boost at the same time).
+
+**How visibility works** — the overlay is shown by default, hides the instant a
+physical controller sends any input, and reappears on the next screen touch. So it
+stays out of the way when you pick up a real pad and comes right back when you put
+it down.
+
+**How it hooks in:**
+
+- `UnleashedRecomp/ui/touch_controls.{h,cpp}` — new module. An `SDLEventListener`
+  tracks `SDL_FINGER*` events; each frame it composes a synthetic
+  `XAMINPUT_GAMEPAD` from whichever on‑screen controls are pressed. A finger that
+  lands on the stick captures it and keeps driving it until released.
+- `UnleashedRecomp/hid/driver/sdl_hid.cpp` — `hid::GetState()` injects that
+  synthetic state as player 1 while the overlay is visible (Android only), and
+  falls back to a physical controller when it's hidden.
+  `SetControllerInputDevice()` hides the overlay when a real pad reports input.
+- `UnleashedRecomp/gpu/video.cpp` — `TouchControls::Init()` / `Draw()` wired into
+  the ImGui overlay pass.
+- `UnleashedRecomp/kernel/xam.cpp` — a small safety net clears a stuck
+  "START prohibited" state if it is ever latched on with no menu open, so the
+  pause button can't get wedged when switching between touch and a gamepad.
+
+Everything is behind `#ifdef __ANDROID__`, so desktop builds are unchanged. The
+button layout is a set of viewport‑fraction constants at the top of
+`touch_controls.cpp` — easy to retune.
+
+**App name** — the Gradle label is `UnleashedRecomp` (the launcher icon is left as
+the stock placeholder in this repo). The Android package id (`org.libsdl.app`) is
+deliberately left unchanged, because the game‑file and Turnip driver paths
+(`/data/data/org.libsdl.app/...`) depend on it.
+
+---
+
 ## Layout of the Android‑specific changes
 
 - `UnleashedRecomp/os/android/` — the OS abstraction layer:
@@ -208,6 +251,8 @@ now overridden to None (this silently caused the a750 artifact saga).
   drivers), optional validation / GFXReconstruct layer wiring.
 - `UnleashedRecomp/gpu/video.cpp` — `#ifdef __ANDROID__` paths (backbuffer
   format, low‑end defaults, profiler overlay force‑on, `Heartbeat()` per frame).
+- `UnleashedRecomp/ui/touch_controls.{h,cpp}`: on‑screen virtual gamepad
+  (Android). See the section above.
 - `UnleashedRecomp/apu/driver/sdl2_driver.cpp` — the audio v2 pull model.
 - `UnleashedRecomp/ui/game_window.cpp` — forced landscape via
   `SDL_HINT_ORIENTATIONS`.
