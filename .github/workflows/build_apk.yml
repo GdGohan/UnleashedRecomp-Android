@@ -89,7 +89,7 @@ jobs:
                 
             cmd /c vcpkg\bootstrap-vcpkg.bat
                 
-            .\vcpkg\vcpkg.exe install --triplet x64-windows
+            .\vcpkg\vcpkg.exe install --triplet arm64-android --overlay-triplets=vcpkg/triplets
 
 
     #
