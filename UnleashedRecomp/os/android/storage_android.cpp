@@ -60,11 +60,22 @@ namespace os::android
                 return legacy;
 
             const std::filesystem::path &external = GetExternalFilesDir();
-            if (!external.empty())
-            {
-                std::filesystem::path result = external / "UnleashedRecomp";
-                std::filesystem::create_directories(result, ec);
+            const std::filesystem::path &external = GetExternalFilesDir();
+if (!external.empty())
+{
+    // external = /storage/emulated/0/Android/data/<package>/files
 
+    auto package = external.parent_path().filename();
+
+    std::filesystem::path result =
+        external.parent_path()      // <package>
+                .parent_path()      // data
+                .parent_path()      // Android
+        / "media"
+        / package
+        / "UnleashedRecomp";
+
+    std::filesystem::create_directories(result, ec);
                 if (!ProbeDirWritable(result))
                 {
                     // Refuse to continue with a poisoned directory - later std::filesystem
