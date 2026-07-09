@@ -28,7 +28,7 @@ inline std::filesystem::path GetGamePath()
 #elif defined(__ANDROID__)
     // Resolved at runtime: legacy adb-pushed internal install if present, otherwise
     // app-specific external storage that users can populate from a PC without root.
-    return os::android::GetMediaDir();
+    return os::android::GetDataRoot();
 #else
     return GAME_INSTALL_DIRECTORY;
 #endif
