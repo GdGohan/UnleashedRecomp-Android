@@ -13,8 +13,12 @@ inline bool IniFile::isNewLine(char value)
     return value == '\n' || value == '\r';
 }
 
-inline bool IniFile::read(const std::filesystem::path& filePath)
+inline bool IniFile::read(const std::filesystem::path filePath)
 {
+    #ifdef __ANDROID__
+    if (filePath.is_relative())
+        filePath = GetGamePath() / filePath;
+    #endif
     std::ifstream file(filePath, std::ios::binary);
     if (!file.good())
         return false;
