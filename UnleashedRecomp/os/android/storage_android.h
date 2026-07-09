@@ -19,7 +19,7 @@ namespace os::android
     // which users can populate from a PC without root.
     const std::filesystem::path & GetDataRoot();
 
-    std::filesystem::path GetMediaDir()
+    inline std::filesystem::path GetMediaDir()
     {
         auto ext = GetExternalFilesDir();
         if (ext.empty())
