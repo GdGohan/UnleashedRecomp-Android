@@ -69,12 +69,18 @@ jobs:
       run: |
         Get-ChildItem -Path out/build/x64-Clang-HostTools -Recurse -Filter *.exe
 
-    - name: Install FreeType
+    - name: Bootstrap vcpkg
+      shell: cmd
       run: |
-        git clone https://github.com/microsoft/vcpkg.git
-        .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg install freetype:x64-windows
+        if not exist vcpkg\bootstrap-vcpkg.bat (
+          echo bootstrap-vcpkg.bat not found
+          dir vcpkg
+          exit /b 1
+        )
 
+        call vcpkg\bootstrap-vcpkg.bat
+        vcpkg\vcpkg.exe install freetype:x64-windows
+    
     #
     # Configure Android ARM64
     #
