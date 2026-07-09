@@ -1,4 +1,4 @@
-# UnleashedRecomp — Android (Adreno) port
+# UnleashedRecomp — Android (Adreno) port — Mod Loader Fix
 
 An **unofficial, Android port** of
 [UnleashedRecomp](https://github.com/hedge-dev/UnleashedRecomp) — the static
@@ -34,17 +34,7 @@ You need a legal dump of **Sonic Unleashed (Xbox 360)** — a matching
 Playable on several Adreno devices via Turnip. Reaches the title screen and in‑
 game, roughly 40–60 FPS depending on GPU / resolution scale.
 
-| Device | SoC | Turnip family | State |
-|---|---|---|---|
-| Adreno 725 | SD 7+ Gen 2 | a7xx **gen1** | Main dev target. Playable. Needs per‑draw `CP_WAIT_FOR_ME`. |
-| Adreno 750 | SD 8 Gen 3 | a7xx **gen3** | Playable **with MSAA off** (see below). |
-| Adreno 732 | SD 7+ Gen 3 | binned a735 / gen2 | Brought up via a chip‑id hack; ~60 FPS. |
-| Adreno 710 | SD 6 Gen 1 class | a7xx **gen1** (custom entry) | Playable via community device entries + our WFM fix (see below). |
-
-Adreno **720 / 722** have device entries in the bundled driver too (same
-community source as the a710 one) but no device has been tested yet. Other
-Adreno 6xx/7xx + Android 9+ *should* work (libadrenotools requirement) but are
-untested.
+Adreno 6xx+
 
 ---
 
