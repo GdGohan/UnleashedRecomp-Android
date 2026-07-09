@@ -1,0 +1,27 @@
+- name: Build Host Tools
+  shell: cmd
+  run: |
+    cmake --preset x64-Clang-HostTools
+    cmake --build out/build/x64-Clang-HostTools
+
+
+- name: Configure Android
+  shell: cmd
+  run: |
+    cmake -B out/build/android-arm64 ^
+    -G Ninja ^
+    -DUNLEASHED_RECOMP_ANDROID=ON ^
+    -DCMAKE_TOOLCHAIN_FILE=%ANDROID_HOME%\ndk\29.0.14206865\build\cmake\android.toolchain.cmake ^
+    -DANDROID_ABI=arm64-v8a ^
+    -DANDROID_PLATFORM=android-26 ^
+    -DCMAKE_BUILD_TYPE=Release ^
+    -DUNLEASHED_RECOMP_HOST_XENON_RECOMP=%CD%\out\build\x64-Clang-HostTools\tools\XenonRecomp.exe ^
+    -DUNLEASHED_RECOMP_HOST_XENOS_RECOMP=%CD%\out\build\x64-Clang-HostTools\tools\XenosRecomp.exe ^
+    -DUNLEASHED_RECOMP_HOST_FILE_TO_C=%CD%\out\build\x64-Clang-HostTools\tools\file_to_c.exe ^
+    -DUNLEASHED_RECOMP_HOST_X_DECOMPRESS=%CD%\out\build\x64-Clang-HostTools\tools\x_decompress.exe
+
+
+- name: Build Android
+  shell: cmd
+  run: |
+    cmake --build out/build/android-arm64 --target UnleashedRecomp
