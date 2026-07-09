@@ -53,8 +53,9 @@ jobs:
     - name: Extract zstd
       shell: bash
       run: |
+        rm -rf tools/XenosRecomp/thirdparty/zstd
         mkdir -p tools/XenosRecomp/thirdparty/zstd
-        unzip -q thirdparty/zstd.zip -d tools/XenosRecomp/thirdparty/zstd
+        unzip -oq thirdparty/zstd.zip -d tools/XenosRecomp/thirdparty/zstd
         ls tools/XenosRecomp/thirdparty/zstd
     
     - name: Build host tools
