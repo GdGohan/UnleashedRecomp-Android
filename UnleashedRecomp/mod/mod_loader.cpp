@@ -197,8 +197,17 @@ void ModLoader::Init()
                 if (!includeDirU8.empty())
                 {
                     std::replace(includeDirU8.begin(), includeDirU8.end(), '\\', '/');
-                    mod.includeDirs.emplace_back(modDirectoryPath / std::u8string_view((const char8_t*)includeDirU8.c_str()));
-                }
+                    std::filesystem::path includeDir = modDirectoryPath / std::u8string_view((const char8_t*)includeDirU8.c_str());
+                    if (!std::filesystem::exists(includeDir))
+                    {
+                           LOGF_IMPL(Utility, "Mod Loader",
+                          "IncludeDir{} not found: {}",
+                           j, includeDir.string());
+                           continue;
+                    }
+                    mod.includeDirs.emplace_back(modDirectoryPath / includeDir);
+                } else { LOGF_IMPL(Utility, "Mod Loader", "IncludeDir{} is missing or empty in {}", j, modIniFilePath.string()); }
+
             }
 
             if (!foundModSaveFilePath)
