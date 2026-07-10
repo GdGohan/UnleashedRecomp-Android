@@ -41,6 +41,35 @@ Adreno 6xx+
 
 ---
 
+### Community report: Exynos (Xclipse) via ExynosTools — unverified, experimental
+
+One user reported getting the game running on a Samsung Exynos device (Xclipse
+GPU) by dropping a build of [ExynosTools](https://github.com/WearyConcern1165/ExynosTools)
+into `driver_import/` in place of the bundled Turnip driver.
+
+**Important context — this is not officially supported:**
+- ExynosTools is not a replacement GPU driver like Turnip. It is a Vulkan
+  compatibility *layer* that sits in front of Samsung's own Xclipse driver,
+  patching gaps (mainly BCn texture format support) — it does not provide
+  Vulkan support on its own.
+- Recent ExynosTools releases are packaged to be droppable into
+  AdrenoTools-style `driver_import/` folders (the same mechanism this app
+  uses), which is presumably why it loaded at all despite this port's
+  Adreno-only design.
+- Several of the low-level hooks this app builds and ships
+  (`gsl_alloc_hook`, etc.) are specific to Qualcomm's KGSL kernel driver
+  and have no equivalent meaning on Exynos/Xclipse — they may simply be
+  inert rather than doing anything useful there.
+- No testing, debugging, or support was done for this path. Expect
+  instability; do not open issues specific to Exynos/Xclipse hardware, as
+  there is no way for me to diagnose them.
+
+If you try this and it works (or doesn't), feel free to report your exact
+device/SoC and ExynosTools version in an issue for visibility — but treat
+Adreno as the only supported target.
+
+---
+
 ## Why a custom driver is required (the core problem)
 
 The engine's renderer (**plume**, Vulkan backend) relies on
