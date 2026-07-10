@@ -149,6 +149,11 @@ void ModLoader::Init()
 
         LOGF_IMPL(Utility, "Mod Loader", "Trying: {}", modIniFilePath.string());
 
+        #ifdef __ANDROID__
+        if (modIniFilePath.is_relative())
+            modIniFilePath = GetGamePath() / modIniFilePath;
+        #endif
+
         IniFile modIni;
         if (!modIni.read(modIniFilePath)) {
             LOGF_IMPL(Utility, "Mod Loader", "Failed to open {}", modIniFilePath.string());
