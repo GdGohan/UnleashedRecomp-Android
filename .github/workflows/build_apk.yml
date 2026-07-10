@@ -94,6 +94,11 @@ jobs:
           -OutFile "UnleashedRecompLib/private/default.xexp"
 
         Invoke-WebRequest `
+          -Uri "https://raw.githubusercontent.com/GdGohan/Private/main/shader.arl" `
+          -Headers $headers `
+          -OutFile "UnleashedRecompLib/private/shader.arl"
+          
+        Invoke-WebRequest `
           -Uri "https://raw.githubusercontent.com/GdGohan/Private/main/shader.ar" `
           -Headers $headers `
           -OutFile "UnleashedRecompLib/private/shader.ar"
