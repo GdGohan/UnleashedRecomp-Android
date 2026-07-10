@@ -36,11 +36,22 @@ namespace os::android
         return path;
     }
 
+const std::filesystem::path & GetExternalFilesDir2()
+{
+    static std::filesystem::path path = []() -> std::filesystem::path
+    {
+        const char *storagePath = SDL_AndroidGetExternalStoragePath();
+        return (storagePath != nullptr) ? std::filesystem::path(storagePath) : std::filesystem::path();
+    }();
+
+    return path;
+}
+
     const std::filesystem::path & GetExternalFilesDir()
 {
     static std::filesystem::path path = []() -> std::filesystem::path
     {
-        const std::filesystem::path &external = GetExternalFilesDir();
+        const std::filesystem::path &external = GetExternalFilesDir2();
         if (external.empty())
             return std::filesystem::path();
 
