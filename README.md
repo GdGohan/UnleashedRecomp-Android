@@ -18,7 +18,7 @@ This is an unofficial Android port of [Unleashed Recompiled](https://github.com/
 - Bluetooth and USB controllers
 - Sound through speakers, wired headphones, and Bluetooth devices
 - HMM and UMM-style mods through the included **Unleashed Mods** app
-- Built-in Turnip driver plus importing another compatible Turnip `.so`
+- Built-in Turnip driver plus importing another driver as a plain `.so` or an AdrenoTools/ExynosTools package `.zip`
 - Game-file access through Android's system Files app
 - Logs and hang diagnostics that can be shared without `adb`
 
@@ -26,7 +26,7 @@ The main development targets are Adreno 710, 725, 732, and 750. Adreno 720 and 7
 
 **Mali support is experimental.** Recent Mali GPUs (Valhall generation and newer with a Vulkan 1.3 driver — e.g. G610/G615/G710/G715/G720) run the game through the stock system driver: the app detects a non-Adreno GPU automatically and skips the bundled Adreno driver. Textures are decompressed on the CPU when the driver lacks BC format support, which increases memory usage. Confirmed working on a Dimensity 8300 Ultra (Mali-G615). Older Mali generations (Bifrost and earlier) cannot work.
 
-PowerVR and Samsung Xclipse are untested. On Xclipse devices the system driver is used; community compatibility packages exist at [ExynosTools](https://github.com/WearyConcern1165/ExynosTools) but cannot be imported into this app yet.
+PowerVR and Samsung Xclipse are untested. On Xclipse devices the system driver is used by default; community compatibility packages from [ExynosTools](https://github.com/WearyConcern1165/ExynosTools) can be dropped into `driver_import/` as a `.zip` to use them instead.
 
 ## Before you install
 
@@ -88,7 +88,7 @@ The app includes a community-built Mesa Turnip driver tuned for the Adreno devic
 You can choose the driver and render mode from the game's options menu. If you want to try another driver:
 
 1. Open the app's transfer folder in Android Files.
-2. Copy one compatible ARM64 Turnip `.so` into `driver_import`.
+2. Copy a compatible ARM64 driver into `driver_import` — either a plain Turnip `.so` or a whole driver-package `.zip` (AdrenoTools releases, ExynosTools).
 3. Start the game and select the imported driver.
 
 Only import drivers from a source you trust. A bad or incompatible Vulkan driver can cause graphical corruption, freezes, or startup crashes. The built-in recovery path lets you return to the bundled driver if an imported one fails.
