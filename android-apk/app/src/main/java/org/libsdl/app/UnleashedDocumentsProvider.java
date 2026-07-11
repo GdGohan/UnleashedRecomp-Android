@@ -212,7 +212,7 @@ public final class UnleashedDocumentsProvider extends DocumentsProvider {
 
     private List<RootInfo> getRoots() {
         File internalGame = new File(requireContext().getFilesDir(), "UnleashedRecomp");
-        File externalFiles = requireContext().getExternalFilesDir(null);
+        File externalFiles = requireContext().getExternalMediaDirs()[0];
         File externalGame = externalFiles != null
             ? new File(externalFiles, "UnleashedRecomp")
             : internalGame;
