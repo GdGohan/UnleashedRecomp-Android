@@ -119,7 +119,7 @@
              MANAGE_DOCUMENTS is a signature permission: only the system DocumentsUI can
              browse the provider directly, and it grants callers narrow URI permissions. -->
         <provider
-            android:name=".UnleashedDocumentsProvider"
+            android:name="org.libsdl.app.UnleashedDocumentsProvider"
             android:authorities="${applicationId}.documents"
             android:exported="true"
             android:grantUriPermissions="true"
