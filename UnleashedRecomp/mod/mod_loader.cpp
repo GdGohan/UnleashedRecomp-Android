@@ -95,12 +95,25 @@ void ModLoader::Init()
 {
     const std::filesystem::path& userPath = GetUserPath();
 
+    auto resolveConfigPath = [](const std::filesystem::path& ownerFile, std::string pathU8)
+    {
+        std::replace(pathU8.begin(), pathU8.end(), '\\', '/');
+
+        std::filesystem::path path(std::u8string_view((const char8_t*)pathU8.c_str()));
+        if (path.is_relative())
+            path = ownerFile.parent_path() / path;
+
+        return path.lexically_normal();
+    };
+
+    std::filesystem::path configIniFilePath = userPath / "cpkredir.ini";
     IniFile configIni;
-    if (!configIni.read(userPath / "cpkredir.ini"))
+    if (!configIni.read(configIniFilePath))
     {
         configIni = {};
+        configIniFilePath = GetGamePath() / "cpkredir.ini";
 
-        if (!configIni.read(GetGamePath() / "cpkredir.ini"))
+        if (!configIni.read(configIniFilePath))
             return;
     }
 
@@ -128,9 +141,13 @@ void ModLoader::Init()
     if (modsDbIniFilePathU8.empty())
         return;
 
+    std::filesystem::path modsDbIniFilePath = resolveConfigPath(configIniFilePath, modsDbIniFilePathU8);
     IniFile modsDbIni;
-    if (!modsDbIni.read(std::u8string_view((const char8_t*)modsDbIniFilePathU8.c_str())))
+    if (!modsDbIni.read(modsDbIniFilePath))
+    {
+        LOGF_IMPL(Utility, "Mod Loader", "Failed to open {}", modsDbIniFilePath.string());
         return;
+    }
 
     bool foundModSaveFilePath = false;
 
@@ -145,19 +162,13 @@ void ModLoader::Init()
         if (modIniFilePathU8.empty())
             continue;
 
-        std::filesystem::path modIniFilePath(std::u8string_view((const char8_t*)modIniFilePathU8.c_str()));
-
-        LOGF_IMPL(Utility, "Mod Loader", "Trying: {}", modIniFilePath.string());
-
-        #ifdef __ANDROID__
-        if (modIniFilePath.is_relative())
-            modIniFilePath = GetGamePath() / modIniFilePath;
-        #endif
+        std::filesystem::path modIniFilePath = resolveConfigPath(modsDbIniFilePath, modIniFilePathU8);
 
         IniFile modIni;
-        if (!modIni.read(modIniFilePath)) {
+        if (!modIni.read(modIniFilePath))
+        {
             LOGF_IMPL(Utility, "Mod Loader", "Failed to open {}", modIniFilePath.string());
-            continue; 
+            continue;
         }
 
         auto modDirectoryPath = modIniFilePath.parent_path();
@@ -202,17 +213,18 @@ void ModLoader::Init()
                 if (!includeDirU8.empty())
                 {
                     std::replace(includeDirU8.begin(), includeDirU8.end(), '\\', '/');
-                    std::filesystem::path includeDir = modDirectoryPath / std::u8string_view((const char8_t*)includeDirU8.c_str());
-                    if (!std::filesystem::exists(includeDir))
-                    {
-                           LOGF_IMPL(Utility, "Mod Loader",
-                          "IncludeDir{} not found: {}",
-                           j, includeDir.string());
-                           continue;
-                    }
-                    mod.includeDirs.emplace_back(modDirectoryPath / includeDir);
-                } else { LOGF_IMPL(Utility, "Mod Loader", "IncludeDir{} is missing or empty in {}", j, modIniFilePath.string()); }
+                    std::filesystem::path includeDir =
+                        (modDirectoryPath / std::u8string_view((const char8_t*)includeDirU8.c_str())).lexically_normal();
 
+                    std::error_code ec;
+                    if (!std::filesystem::exists(includeDir, ec))
+                    {
+                        LOGF_IMPL(Utility, "Mod Loader", "IncludeDir{} not found: {}", j, includeDir.string());
+                        continue;
+                    }
+
+                    mod.includeDirs.emplace_back(std::move(includeDir));
+                }
             }
 
             if (!foundModSaveFilePath)
