@@ -725,7 +725,9 @@ static void ProcessDriverImportDir(const std::filesystem::path &turnipDir)
         "\n"
         "You can also create a tu_debug.txt file in THIS folder to set Turnip's\n"
         "TU_DEBUG options without rebuilding the app; it overrides the Render Mode\n"
-        "selection. The bundled driver has the anti-shimmer fix compiled\n"
+        "selection. An fd_dev_features.txt here likewise sets Mesa's\n"
+        "FD_DEV_FEATURES (e.g. enable_tp_ubwc_flag_hint=1, which the app already\n"
+        "applies automatically on Xiaomi HyperOS 3+ to fix display glitches). The bundled driver has the anti-shimmer fix compiled\n"
         "in and needs no TU_DEBUG options. Diagnostic examples (one per run):\n"
         "  nolrz\n"
         "  sysmem\n"
@@ -954,6 +956,43 @@ static void ApplyRenderMode(EAndroidRenderMode renderMode, bool allowDiagnosticO
         externalPath.string(), buffer, modeName);
 }
 
+// Mesa feature flags via FD_DEV_FEATURES. Xiaomi HyperOS 3 ships a display stack whose
+// composer misreads Turnip's UBWC layout, producing gameplay-impairing glitches; Mesa's
+// enable_tp_ubwc_flag_hint feature fixes the interop (issue #51), so it is applied
+// automatically on HyperOS 3+. A driver_import/fd_dev_features.txt overrides the value
+// verbatim for experiments on other devices (delete the file to return to automatic).
+static void ApplyFdDevFeatures()
+{
+    char buffer[256]{};
+
+    const std::filesystem::path &externalDir = os::android::GetExternalFilesDir();
+    if (!externalDir.empty() &&
+        ReadTrimmedTextFile(externalDir / "driver_import" / "fd_dev_features.txt", buffer, sizeof(buffer)))
+    {
+        setenv("FD_DEV_FEATURES", buffer, 1);
+        LOGF("Applied FD_DEV_FEATURES override from fd_dev_features.txt: \"{}\".", buffer);
+        return;
+    }
+
+    // HyperOS exposes its version through ro.mi.os.version.name (e.g. "OS3.0"); MIUI
+    // devices and other vendors don't define it.
+    char osVersion[PROP_VALUE_MAX]{};
+    __system_property_get("ro.mi.os.version.name", osVersion);
+    if (osVersion[0] == '\0')
+        return;
+
+    const char *digits = osVersion;
+    while (*digits != '\0' && (*digits < '0' || *digits > '9'))
+        digits++;
+
+    if (atoi(digits) >= 3)
+    {
+        setenv("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1", 1);
+        LOGF("HyperOS {} detected: FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1 (UBWC interop fix).",
+            osVersion);
+    }
+}
+
 // Optional: if a "vk_layer_settings.txt" file is pushed alongside the driver, it's pointed to via
 // VK_LAYER_SETTINGS_PATH so VK_LAYER_KHRONOS_validation picks up settings from it (e.g. enabling
 // Synchronization Validation) without rebuilding the APK. See
@@ -1037,6 +1076,10 @@ void *AndroidGetCustomVulkanLoader()
     // Arm capture first: it is independent of which Vulkan driver we end up loading (it works even
     // on the stock driver path where this function returns nullptr below).
     ApplyGfxreconstructCapture();
+
+    // Applies to every driver path (custom and system) - the HyperOS UBWC interop
+    // glitch is in the display stack, not in a particular driver build.
+    ApplyFdDevFeatures();
 
     PrepareVulkanStartup();
 

@@ -1,5 +1,8 @@
 #include <stdafx.h>
 #include "memory.h"
+#include <os/logger.h>
+
+#include <atomic>
 
 Memory::Memory()
 {
@@ -23,7 +26,16 @@ Memory::Memory()
     if (base == nullptr)
         return;
 
+#ifdef __ANDROID__
+    // Keep the guest null page readable and writable. On some devices the game
+    // evaluates a half-constructed animation subtree whose data pointers are 0/-1
+    // (issue #27, 100% on Snapdragon 8 Gen 2 handhelds); testers confirmed the
+    // reads are benign (zeros) with no visual artifacts, while faulting made the
+    // game unplayable there. Indirect calls fetched through such zeros are guarded
+    // separately in ppc_detail.h. Desktop builds keep the trap to catch new bugs.
+#else
     mprotect(base, 4096, PROT_NONE);
+#endif
 #endif
 
     for (size_t i = 0; PPCFuncMappings[i].guest != 0; i++)
@@ -36,4 +48,18 @@ Memory::Memory()
 void* MmGetHostAddress(uint32_t ptr)
 {
     return g_memory.Translate(ptr);
+}
+
+// Called from the hardened PPC_CALL_INDIRECT_FUNC (UnleashedRecompLib/ppc/ppc_detail.h)
+// when an indirect call's target is outside the recompiled code range or resolves to no
+// host function - a wild jump the process could never survive. Skipping the call keeps
+// the half-constructed-state races of issue #27 non-fatal; the log keeps them visible.
+extern "C" void PPCIndirectCallMissing(PPCContext& ctx, uint8_t* base, uint32_t target)
+{
+    static std::atomic<uint32_t> s_reportCount{ 0 };
+    if (s_reportCount.fetch_add(1, std::memory_order_relaxed) < 16)
+    {
+        LOGF_ERROR("Indirect call to unmapped guest address {:08X} skipped (r3={:08X}).",
+            target, ctx.r3.u32);
+    }
 }

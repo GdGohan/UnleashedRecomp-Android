@@ -9,6 +9,8 @@
 
 ### Fixes
 
+- Made the issue #27 crash cascade non-fatal (release-candidate hardening). The game on affected devices evaluates a half-constructed animation subtree from several code paths at once, so instead of guarding each crash site: the guest null page is now readable/writable on Android (reads of 0/-1 data pointers return zeros — testers confirmed no visual impact), and indirect calls whose target is outside the recompiled code range or unmapped are skipped and logged instead of jumping wild. Desktop behaviour is unchanged.
+- Fixed gameplay-impairing display glitches on Xiaomi HyperOS 3 (issue #51): Mesa's `enable_tp_ubwc_flag_hint=1` feature flag is now applied automatically when HyperOS 3+ is detected, and a `driver_import/fd_dev_features.txt` file can override `FD_DEV_FEATURES` for experiments on other devices.
 - The profiler overlay no longer opens on every launch (issue #46). It is off by default, can be enabled with the new "Show profiler overlay" launcher checkbox, and closing it in-game with its X button is remembered across launches.
 - The mod manager no longer creates a second `mods` folder in the transfer root (issue #42). Only `<game root>/mods` is created; an empty leftover transfer folder from 0.3.0 is removed automatically, and mods already placed there are still detected.
 - Worked around the "ring crash" from issue #27 (100% crash on Snapdragon 8 Gen 2 handhelds when collecting a ring, independent of driver, render mode and frame rate): the game's animation node evaluator dereferences a child node data pointer that is 0 or -1 on those devices. The evaluation is now skipped for such nodes and the state is logged instead of crashing; the root cause in game data/state is still under investigation.
