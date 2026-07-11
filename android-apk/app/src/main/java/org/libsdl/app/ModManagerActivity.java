@@ -130,8 +130,8 @@ public final class ModManagerActivity extends Activity {
 
         File activeGameRoot = getActiveGameRoot();
         File gameMods = new File(activeGameRoot, "mods");
-        File transferMods = getExternalFilesDir(null) != null
-            ? new File(getExternalFilesDir(null), "mods")
+        File transferMods = getExternalMediaDirs()[0] != null
+            ? new File(getExternalMediaDirs()[0], "mods")
             : gameMods;
         gameMods.mkdirs();
         transferMods.mkdirs();
@@ -406,7 +406,7 @@ public final class ModManagerActivity extends Activity {
 
     private File getActiveGameRoot() {
         File internal = new File(getFilesDir(), "UnleashedRecomp");
-        File externalBase = getExternalFilesDir(null);
+        File externalBase = getExternalMediaDirs()[0];
         File external = externalBase != null ? new File(externalBase, "UnleashedRecomp") : internal;
         return new File(internal, "game").isDirectory() ? internal : external;
     }
