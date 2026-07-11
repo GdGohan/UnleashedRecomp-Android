@@ -52,13 +52,12 @@ import android.widget.Toast;
 
 import java.util.Hashtable;
 import java.util.Locale;
+
 import android.opengl.EGL14;
 import android.opengl.GLES20;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import javax.microedition.khronos.egl.EGL10;
 
 /**
     SDL Activity
@@ -68,72 +67,73 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     private static final int SDL_MAJOR_VERSION = 2;
     private static final int SDL_MINOR_VERSION = 31;
     private static final int SDL_MICRO_VERSION = 0;
-
+    
     public static String getRenderer() {
-    android.opengl.EGLDisplay display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
-
-    int[] version = new int[2];
-    EGL14.eglInitialize(display, version, 0, version, 1);
-
-    int[] configAttribs = {
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-            EGL14.EGL_NONE
-    };
-
-    android.opengl.EGLConfig[] configs = new android.opengl.EGLConfig[1];
-    int[] numConfigs = new int[1];
-
-    EGL14.eglChooseConfig(
-            display,
-            configAttribs, 0,
-            configs, 0,
-            1,
-            numConfigs, 0
-    );
-
-    int[] contextAttribs = {
-            EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
-            EGL14.EGL_NONE
-    };
-
-    android.opengl.EGLContext context = EGL14.eglCreateContext(
-            display,
-            configs[0],
-            EGL14.EGL_NO_CONTEXT,
-            contextAttribs, 0
-    );
-
-    int[] surfaceAttribs = {
-            EGL14.EGL_WIDTH, 1,
-            EGL14.EGL_HEIGHT, 1,
-            EGL14.EGL_NONE
-    };
-
-    android.opengl.EGLSurface surface = EGL14.eglCreatePbufferSurface(
-            display,
-            configs[0],
-            surfaceAttribs, 0
-    );
-
-    EGL14.eglMakeCurrent(display, surface, surface, context);
-
-    String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
-
-    EGL14.eglMakeCurrent(
-            display,
-            EGL14.EGL_NO_SURFACE,
-            EGL14.EGL_NO_SURFACE,
-            EGL14.EGL_NO_CONTEXT
-    );
-
-    EGL14.eglDestroySurface(display, surface);
-    EGL14.eglDestroyContext(display, context);
-    EGL14.eglTerminate(display);
-
-    return renderer;
+        android.opengl.EGLDisplay display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
+    
+        int[] version = new int[2];
+        EGL14.eglInitialize(display, version, 0, version, 1);
+    
+        int[] configAttribs = {
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGL14.EGL_NONE
+        };
+    
+        android.opengl.EGLConfig[] configs = new android.opengl.EGLConfig[1];
+        int[] numConfigs = new int[1];
+    
+        EGL14.eglChooseConfig(
+                display,
+                configAttribs, 0,
+                configs, 0,
+                1,
+                numConfigs, 0
+        );
+    
+        int[] contextAttribs = {
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL14.EGL_NONE
+        };
+    
+        android.opengl.EGLContext context = EGL14.eglCreateContext(
+                display,
+                configs[0],
+                EGL14.EGL_NO_CONTEXT,
+                contextAttribs, 0
+        );
+    
+        int[] surfaceAttribs = {
+                EGL14.EGL_WIDTH, 1,
+                EGL14.EGL_HEIGHT, 1,
+                EGL14.EGL_NONE
+        };
+    
+        android.opengl.EGLSurface surface = EGL14.eglCreatePbufferSurface(
+                display,
+                configs[0],
+                surfaceAttribs, 0
+        );
+    
+        EGL14.eglMakeCurrent(display, surface, surface, context);
+    
+        String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
+    
+        EGL14.eglMakeCurrent(
+                display,
+                EGL14.EGL_NO_SURFACE,
+                EGL14.EGL_NO_SURFACE,
+                EGL14.EGL_NO_CONTEXT
+        );
+    
+        EGL14.eglDestroySurface(display, surface);
+        EGL14.eglDestroyContext(display, context);
+        EGL14.eglTerminate(display);
+    
+        return renderer;
     }
+    
 /*
-    // Display InputType.SOURCE/CLASSof events and devices
+    // Display InputType.SOURCE/CLASS of events and devices
     //
     // SDLActivity.debugSource(device.getSources(), "device[" + device.getName() + "]");
     // SDLActivity.debugSource(event.getSource(), "event");
@@ -396,22 +396,22 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         } catch (Exception e) {
             Log.v(TAG, "modify thread properties failed " + e.toString());
         }
-
+        
         String renderer = getRenderer();
 
-if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
-    File mediaDir = getExternalMediaDirs()[0];
-    File driverImport = new File(mediaDir, "driver_import");
-    if (!driverImport.exists()) driverImport.mkdirs();
-
-    File tuDebug = new File(driverImport, "tu_debug.txt");
-
-    if (!tuDebug.exists()) {
-        try (FileWriter writer = new FileWriter(tuDebug)) {
-            writer.write("sysmem");
-        } catch (IOException e) {}
-    }
-}
+        if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
+            File mediaDir = getExternalMediaDirs()[0];
+            File driverImport = new File(mediaDir, "driver_import");
+            if (!driverImport.exists()) driverImport.mkdirs();
+        
+            File tuDebug = new File(driverImport, "tu_debug.txt");
+        
+            if (!tuDebug.exists()) {
+                try (FileWriter writer = new FileWriter(tuDebug)) {
+                    writer.write("sysmem");
+                } catch (IOException e) {}
+            }
+        }
 
         // Load shared libraries
         String errorMsgBrokenLib = "";
@@ -698,21 +698,13 @@ if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
 
     @Override
     public void onBackPressed() {
-        // Check if we want to block the back button in case of mouse right click.
-        //
-        // If we do, the normal hardware back button will no longer work and people have to use home,
-        // but the mouse right click will work.
-        //
-        boolean trapBack = SDLActivity.nativeGetHintBoolean("SDL_ANDROID_TRAP_BACK_BUTTON", false);
-        if (trapBack) {
-            // Exit and let the mouse handler handle this button (if appropriate)
-            return;
-        }
-
-        // Default system back button behavior.
-        if (!isFinishing()) {
-            super.onBackPressed();
-        }
+        // A game session must survive the Android Back button just like it survives Home.
+        // super.onBackPressed() finishes this root Activity, tears down SDL/Vulkan and turns
+        // the next launcher tap into a cold boot. Move the existing task to the background
+        // instead; the native-window watcher owns the matching pause/resume transition.
+        // Do this even when SDL_ANDROID_TRAP_BACK_BUTTON is enabled: that hint previously
+        // swallowed the system Back gesture before it could minimize the Android task.
+        minimizeTask();
     }
 
     // Called by JNI from SDL.
@@ -734,7 +726,14 @@ if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
 
     // Used to access the system back behavior.
     public void superOnBackPressed() {
-        super.onBackPressed();
+        minimizeTask();
+    }
+
+    private void minimizeTask() {
+        if (!isFinishing()) {
+            boolean moved = moveTaskToBack(true);
+            Log.v(TAG, "moveTaskToBack(true): " + moved);
+        }
     }
 
     @Override
@@ -745,6 +744,19 @@ if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
         }
 
         int keyCode = event.getKeyCode();
+        // SDL's focused Surface consumes keyboard events before Activity.onBackPressed()
+        // is reached. Intercept the real Android Back key at the Activity boundary so
+        // SDL_ANDROID_TRAP_BACK_BUTTON cannot swallow the minimize request. Preserve the
+        // platform behavior while the hidden text editor/IME is actually visible, and do
+        // not reinterpret mouse back buttons as task navigation.
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            (event.getSource() & InputDevice.SOURCE_MOUSE) != InputDevice.SOURCE_MOUSE &&
+            (mTextEdit == null || mTextEdit.getVisibility() != View.VISIBLE)) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                minimizeTask();
+            }
+            return true;
+        }
         // Ignore certain special keys so they're handled by Android
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN ||
             keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
@@ -1118,10 +1130,16 @@ if (renderer != null && renderer.matches(".*Adreno \\(TM\\) 6\\d\\d.*")) {
             return;
         }
 
-        Intent startMain = new Intent(Intent.ACTION_MAIN);
-        startMain.addCategory(Intent.CATEGORY_HOME);
-        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        mSingleton.startActivity(startMain);
+        // Starting a separate CATEGORY_HOME intent can race task/lifecycle state on vendor
+        // launchers. Background the game's own task on the UI thread instead.
+        mSingleton.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mSingleton != null) {
+                    mSingleton.minimizeTask();
+                }
+            }
+        });
     }
 
     /**
