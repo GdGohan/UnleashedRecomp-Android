@@ -66,6 +66,15 @@ enum class EAndroidTouchControlsPolicy : uint32_t
     Off
 };
 
+// Camera control on touch screens (issue #50): drag on the free right half of the
+// screen, a dedicated virtual right stick, or no touch camera at all.
+enum class EAndroidTouchCameraMode : uint32_t
+{
+    TouchArea,
+    RightStick,
+    Off
+};
+
 enum class EChannelConfiguration : uint32_t
 {
     Stereo,

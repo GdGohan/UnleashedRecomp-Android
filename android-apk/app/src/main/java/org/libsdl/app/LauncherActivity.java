@@ -53,6 +53,7 @@ public final class LauncherActivity extends Activity {
     private Spinner driverSpinner;
     private Spinner renderSpinner;
     private Spinner touchSpinner;
+    private Spinner touchCameraSpinner;
     private CheckBox showFps;
     private CheckBox showProfiler;
     private CheckBox skipIntro;
@@ -120,6 +121,8 @@ public final class LauncherActivity extends Activity {
         LinearLayout controls = card(R.string.launcher_controls);
         touchSpinner = settingSpinner(controls, R.string.launcher_touch_policy,
             R.array.touch_policy_labels);
+        touchCameraSpinner = settingSpinner(controls, R.string.launcher_touch_camera,
+            R.array.touch_camera_labels);
         Button editLayout = button(R.string.launcher_edit_layout, view -> launchLayoutEditor());
         controls.addView(editLayout);
         page.addView(controls);
@@ -244,6 +247,8 @@ public final class LauncherActivity extends Activity {
             new String[] {"Auto", "GMEM", "Sysmem"});
         select(touchSpinner, config.get("Input.TouchControls"),
             new String[] {"Auto", "Always On", "Off"});
+        select(touchCameraSpinner, config.get("Input.TouchCamera"),
+            new String[] {"Touch Area", "Right Stick", "Off"});
         showFps.setChecked(Boolean.parseBoolean(config.get("Video.ShowFPS")));
         showProfiler.setChecked(Boolean.parseBoolean(config.get("Video.ShowProfiler")));
         skipIntro.setChecked(Boolean.parseBoolean(config.get("Codes.SkipIntroLogos")));
@@ -258,6 +263,7 @@ public final class LauncherActivity extends Activity {
         values.put("Video.ShowFPS", Boolean.toString(showFps.isChecked()));
         values.put("Video.ShowProfiler", Boolean.toString(showProfiler.isChecked()));
         values.put("Input.TouchControls", quote(new String[] {"Auto", "Always On", "Off"}[touchSpinner.getSelectedItemPosition()]));
+        values.put("Input.TouchCamera", quote(new String[] {"Touch Area", "Right Stick", "Off"}[touchCameraSpinner.getSelectedItemPosition()]));
         values.put("Codes.SkipIntroLogos", Boolean.toString(skipIntro.isChecked()));
         try {
             patchConfig(AppStorage.configFile(this), values);

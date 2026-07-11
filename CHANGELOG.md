@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Touch camera control (issue #50)
+
+- The in-game camera can now be controlled from the touch screen. Two modes are available in the launcher's Controls card: **Swipe on screen** (default — drag anywhere on the free right half of the screen, no extra widget) and **Right stick** (a dedicated virtual stick, arrangeable in the layout editor like every other control), plus **Off**.
+- Fingers that start on buttons or sticks never move the camera, and the camera finger never presses buttons.
+
 ### Fixes
 
 - The profiler overlay no longer opens on every launch (issue #46). It is off by default, can be enabled with the new "Show profiler overlay" launcher checkbox, and closing it in-game with its X button is remembered across launches.

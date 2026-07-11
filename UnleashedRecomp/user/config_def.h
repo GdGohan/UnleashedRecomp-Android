@@ -16,6 +16,7 @@ CONFIG_DEFINE_LOCALISED("Input", bool, Vibration, true);
 CONFIG_DEFINE_LOCALISED("Input", bool, AllowBackgroundInput, false);
 #ifdef __ANDROID__
 CONFIG_DEFINE_ENUM_LOCALISED("Input", EAndroidTouchControlsPolicy, TouchControls, EAndroidTouchControlsPolicy::Auto);
+CONFIG_DEFINE_ENUM("Input", EAndroidTouchCameraMode, TouchCamera, EAndroidTouchCameraMode::TouchArea);
 #endif
 CONFIG_DEFINE_ENUM_LOCALISED("Input", EControllerIcons, ControllerIcons, EControllerIcons::Auto);
 

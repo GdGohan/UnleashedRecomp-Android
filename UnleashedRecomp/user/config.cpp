@@ -44,6 +44,13 @@ CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidTouchControlsPolicy)
     { "Off",       EAndroidTouchControlsPolicy::Off }
 };
 
+CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidTouchCameraMode)
+{
+    { "Touch Area",  EAndroidTouchCameraMode::TouchArea },
+    { "Right Stick", EAndroidTouchCameraMode::RightStick },
+    { "Off",         EAndroidTouchCameraMode::Off }
+};
+
 CONFIG_DEFINE_ENUM_TEMPLATE(SDL_Scancode)
 {
     { "???", SDL_SCANCODE_UNKNOWN },

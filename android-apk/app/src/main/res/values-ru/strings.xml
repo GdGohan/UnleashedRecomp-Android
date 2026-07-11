@@ -26,6 +26,7 @@
     <string name="launcher_driver_folder">Папка драйверов</string>
     <string name="launcher_controls">Управление</string>
     <string name="launcher_touch_policy">Экранные кнопки</string>
+    <string name="launcher_touch_camera">Управление камерой</string>
     <string name="launcher_edit_layout">Настроить расположение кнопок</string>
     <string name="launcher_mods">Моды</string>
     <string name="launcher_mods_summary">Включайте совместимые моды HMM/UMM и задавайте их приоритет.</string>
@@ -68,5 +69,8 @@
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Авто</item><item>Всегда включены</item><item>Выключены</item>
+    </string-array>
+    <string-array name="touch_camera_labels">
+        <item>Свайп по экрану</item><item>Правый стик</item><item>Выключено</item>
     </string-array>
 </resources>
