@@ -358,8 +358,11 @@ int main(int argc, char *argv[])
 
         if (installSucceeded)
         {
-            std::error_code renameEc;
-            std::filesystem::rename(stagingDir, root / "to_install.done", renameEc);
+            std::error_code removeEc;
+            std::filesystem::remove_all(stagingDir, removeEc);
+            
+            if (removeEc)
+               LOGN_WARNING("Failed to remove staging directory after install: {}", removeEc.message());
 
             char resultText[512];
             snprintf(resultText, sizeof(resultText), "%s", Localise("IntegrityCheck_Success").c_str());
