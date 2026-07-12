@@ -30,6 +30,7 @@
     <string name="launcher_driver_folder">Driver folder</string>
     <string name="launcher_controls">Controls</string>
     <string name="launcher_touch_policy">On-screen controls</string>
+    <string name="launcher_touch_camera">Camera control</string>
     <string name="launcher_edit_layout">Arrange touch controls</string>
     <string name="launcher_mods">Mods</string>
     <string name="launcher_mods_summary">Enable compatible HMM/UMM mods and set their priority.</string>
@@ -72,5 +73,8 @@
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Always on</item><item>Off</item>
+    </string-array>
+    <string-array name="touch_camera_labels">
+        <item>Swipe on screen</item><item>Right stick</item><item>Off</item>
     </string-array>
 </resources>

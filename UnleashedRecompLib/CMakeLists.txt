@@ -113,4 +113,9 @@ add_library(UnleashedRecompLib
 
 target_include_directories(UnleashedRecompLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(UnleashedRecompLib PRIVATE "${UNLEASHED_RECOMP_TOOLS_ROOT}/XenonRecomp/thirdparty/simde")
+# Pulls ppc/ppc_detail.h (tracked, unlike the generated rest of ppc/) into the
+# generated ppc_config.h: hardens PPC_CALL_INDIRECT_FUNC against out-of-range
+# and unmapped targets (issue #27). PUBLIC so every TU that includes the ppc
+# headers sees the same macro definition as the precompiled header.
+target_compile_definitions(UnleashedRecompLib PUBLIC PPC_INCLUDE_DETAIL)
 target_precompile_headers(UnleashedRecompLib PUBLIC "ppc/ppc_recomp_shared.h")

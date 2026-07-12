@@ -46,6 +46,7 @@ namespace
         TC_LB, TC_RB,
         TC_LT, TC_RT,
         TC_START, TC_BACK,
+        TC_RSTICK, // appended last so saved layouts from older builds stay valid
         TC_COUNT
     };
 
@@ -53,6 +54,13 @@ namespace
     constexpr float STICK_BASE_R  = 0.150f;
     constexpr float STICK_THUMB_R = 0.070f;
     constexpr float STICK_ZONE_R  = 0.210f;
+    // The camera stick is smaller: it shares the right side with the face buttons.
+    constexpr float RSTICK_BASE_R  = 0.105f;
+    constexpr float RSTICK_THUMB_R = 0.050f;
+    constexpr float RSTICK_ZONE_R  = 0.150f;
+    // Full camera-stick deflection in touch-area mode at this finger speed
+    // (fraction of viewport height per frame).
+    constexpr float CAM_DRAG_SENS = 0.0075f;
     constexpr float FACE_BTN_R    = 0.058f;
     constexpr float SHOULDER_HW   = 0.075f;
     constexpr float SHOULDER_HH   = 0.036f;
@@ -73,9 +81,9 @@ namespace
     // fixed layout are baked here at the reference 2400x1080 aspect.
     const Layout kDefault =
     {
-        //  stick    A       B       X       Y      LB      RB      LT      RT     Start   Back
-        {  0.135f, 0.865f, 0.914f, 0.816f, 0.865f, 0.075f, 0.925f, 0.075f, 0.925f, 0.555f, 0.445f },
-        {  0.760f, 0.868f, 0.760f, 0.760f, 0.652f, 0.090f, 0.090f, 0.185f, 0.185f, 0.070f, 0.070f },
+        //  stick    A       B       X       Y      LB      RB      LT      RT     Start   Back   rstick
+        {  0.135f, 0.865f, 0.914f, 0.816f, 0.865f, 0.075f, 0.925f, 0.075f, 0.925f, 0.555f, 0.445f, 0.680f },
+        {  0.760f, 0.868f, 0.760f, 0.760f, 0.652f, 0.090f, 0.090f, 0.185f, 0.185f, 0.070f, 0.070f, 0.820f },
         1.0f
     };
 
@@ -87,12 +95,13 @@ namespace
         EButtonIcon::A, EButtonIcon::B, EButtonIcon::X, EButtonIcon::Y,
         EButtonIcon::LB, EButtonIcon::RB,
         EButtonIcon::LT, EButtonIcon::RT,
-        EButtonIcon::Start, EButtonIcon::Back
+        EButtonIcon::Start, EButtonIcon::Back,
+        EButtonIcon::A // rstick (unused)
     };
 
     const char* const kKey[TC_COUNT] =
     {
-        "stick", "a", "b", "x", "y", "lb", "rb", "lt", "rt", "start", "back"
+        "stick", "a", "b", "x", "y", "lb", "rb", "lt", "rt", "start", "back", "rstick"
     };
 
     // ---- Finger tracking (SDL touch thread) --------------------------------
@@ -113,6 +122,12 @@ namespace
     // Finger driving the analog stick (-1 = none). Render-thread only.
     SDL_FingerID g_stickFingerId = (SDL_FingerID)-1;
 
+    // Camera control fingers (render thread only): the virtual right stick, or the
+    // free-area camera drag with its last position for per-frame deltas.
+    SDL_FingerID g_rstickFingerId = (SDL_FingerID)-1;
+    SDL_FingerID g_camFingerId = (SDL_FingerID)-1;
+    ImVec2 g_camLastPos{};
+
     // ---- Editor state (render thread only) ---------------------------------
 
     bool g_edit = false;
@@ -131,6 +146,7 @@ namespace
         ImVec2 c(g_layout.x[i] * vw, g_layout.y[i] * vh);
         const float s = g_layout.scale;
         if (i == TC_STICK)                { const float r = STICK_BASE_R * vh * s; return { c, r, r, true }; }
+        if (i == TC_RSTICK)               { const float r = RSTICK_BASE_R * vh * s; return { c, r, r, true }; }
         if (i >= TC_A && i <= TC_Y)       { const float r = FACE_BTN_R  * vh * s; return { c, r, r, true }; }
         if (i >= TC_LB && i <= TC_RT)     { return { c, SHOULDER_HW * vh * s, SHOULDER_HH * vh * s, false }; }
         return { c, MENU_HW * vh * s, MENU_HH * vh * s, false }; // Start / Back
@@ -278,11 +294,12 @@ namespace
     // Draw a control's static visual (no press detection) - used by the editor.
     void DrawElemVisual(ImDrawList* dl, int i, const ElemRect& r)
     {
-        if (i == TC_STICK)
+        if (i == TC_STICK || i == TC_RSTICK)
         {
             dl->AddCircleFilled(r.c, r.hw, IM_COL32(0, 0, 0, 55), 48);
             dl->AddCircle(r.c, r.hw, IM_COL32(255, 255, 255, 130), 48, 3.0f);
-            const float thumb = r.hw * (STICK_THUMB_R / STICK_BASE_R);
+            const float thumb = r.hw * (i == TC_RSTICK ? RSTICK_THUMB_R / RSTICK_BASE_R
+                                                       : STICK_THUMB_R / STICK_BASE_R);
             dl->AddCircleFilled(r.c, thumb, IM_COL32(255, 255, 255, 110), 32);
             return;
         }
@@ -417,6 +434,8 @@ void TouchControls::Draw()
     {
         g_state = {};
         g_stickFingerId = (SDL_FingerID)-1;
+        g_rstickFingerId = (SDL_FingerID)-1;
+        g_camFingerId = (SDL_FingerID)-1;
         g_dragElem = -1;
         g_prevIds.clear();
         return;
@@ -531,11 +550,137 @@ void TouchControls::Draw()
             stickActive = true;
         }
 
-        // Buttons are hit-tested against every finger except the stick's.
+        // ---- Camera: virtual right stick ----
+        const auto cameraMode = Config::TouchCamera.Value;
+        if (cameraMode == EAndroidTouchCameraMode::RightStick)
+        {
+            const ImVec2 rstickC(g_layout.x[TC_RSTICK] * vw, g_layout.y[TC_RSTICK] * vh);
+            const float rBaseR  = RSTICK_BASE_R  * vh * g_layout.scale;
+            const float rThumbR = RSTICK_THUMB_R * vh * g_layout.scale;
+            const float rZoneR  = RSTICK_ZONE_R  * vh * g_layout.scale;
+
+            const ImVec2* rstickPos = nullptr;
+            if (g_rstickFingerId != (SDL_FingerID)-1)
+            {
+                for (const auto& fp : fps)
+                    if (fp.id == g_rstickFingerId) { rstickPos = &fp.pos; break; }
+
+                if (!rstickPos)
+                    g_rstickFingerId = (SDL_FingerID)-1;
+            }
+            if (g_rstickFingerId == (SDL_FingerID)-1)
+            {
+                for (const auto& fp : fps)
+                {
+                    if (fp.id == g_stickFingerId)
+                        continue;
+
+                    const float dx = fp.pos.x - rstickC.x;
+                    const float dy = fp.pos.y - rstickC.y;
+                    if (dx * dx + dy * dy <= rZoneR * rZoneR)
+                    {
+                        g_rstickFingerId = fp.id;
+                        rstickPos = &fp.pos;
+                        break;
+                    }
+                }
+            }
+
+            ImVec2 rThumbPos = rstickC;
+            bool rstickActive = false;
+            if (rstickPos)
+            {
+                const float dx = rstickPos->x - rstickC.x;
+                const float dy = rstickPos->y - rstickC.y;
+                const float len = std::sqrt(dx * dx + dy * dy);
+                const float cl = std::min(len, rBaseR);
+                const float ux = len > 0.0f ? dx / len : 0.0f;
+                const float uy = len > 0.0f ? dy / len : 0.0f;
+
+                rThumbPos = { rstickC.x + ux * cl, rstickC.y + uy * cl };
+
+                const float ax = (ux * cl) / rBaseR;
+                const float ay = (uy * cl) / rBaseR;
+                st.sThumbRX = int16_t(std::clamp(ax * 32767.0f, -32767.0f, 32767.0f));
+                st.sThumbRY = int16_t(std::clamp(-ay * 32767.0f, -32767.0f, 32767.0f));
+
+                rstickActive = true;
+            }
+
+            dl->AddCircleFilled(rstickC, rBaseR, IM_COL32(0, 0, 0, rstickActive ? 90 : 55), 48);
+            dl->AddCircle(rstickC, rBaseR, IM_COL32(255, 255, 255, 130), 48, 3.0f);
+            dl->AddCircleFilled(rThumbPos, rThumbR, IM_COL32(255, 255, 255, rstickActive ? 170 : 110), 32);
+        }
+        else
+        {
+            g_rstickFingerId = (SDL_FingerID)-1;
+        }
+
+        // ---- Camera: free-area drag on the right half of the screen ----
+        if (cameraMode == EAndroidTouchCameraMode::TouchArea)
+        {
+            const ImVec2* camPos = nullptr;
+            if (g_camFingerId != (SDL_FingerID)-1)
+            {
+                for (const auto& fp : fps)
+                    if (fp.id == g_camFingerId) { camPos = &fp.pos; break; }
+
+                if (!camPos)
+                    g_camFingerId = (SDL_FingerID)-1;
+            }
+            if (g_camFingerId == (SDL_FingerID)-1)
+            {
+                for (const auto& fp : fresh)
+                {
+                    if (fp.id == g_stickFingerId || fp.pos.x < vw * 0.5f)
+                        continue;
+
+                    // A finger that lands on any control belongs to that control.
+                    bool onControl = false;
+                    for (int i = 0; i < TC_COUNT && !onControl; ++i)
+                    {
+                        const ElemRect r = ElemRectOf(i, vw, vh);
+                        const float hw = r.hw * 1.35f;
+                        const float hh = r.hh * 1.35f;
+                        onControl = fp.pos.x >= r.c.x - hw && fp.pos.x <= r.c.x + hw &&
+                                    fp.pos.y >= r.c.y - hh && fp.pos.y <= r.c.y + hh;
+                    }
+                    if (onControl)
+                        continue;
+
+                    g_camFingerId = fp.id;
+                    g_camLastPos = fp.pos;
+                    camPos = &fp.pos;
+                    break;
+                }
+            }
+
+            if (camPos)
+            {
+                const float dx = camPos->x - g_camLastPos.x;
+                const float dy = camPos->y - g_camLastPos.y;
+                g_camLastPos = *camPos;
+
+                const float full = vh * CAM_DRAG_SENS;
+                const float ax = std::clamp(dx / full, -1.0f, 1.0f);
+                const float ay = std::clamp(dy / full, -1.0f, 1.0f);
+                st.sThumbRX = int16_t(ax * 32767.0f);
+                st.sThumbRY = int16_t(-ay * 32767.0f);
+
+                // Subtle feedback dot so the user can tell the drag is being tracked.
+                dl->AddCircleFilled(*camPos, vh * 0.012f, IM_COL32(255, 255, 255, 70), 24);
+            }
+        }
+        else
+        {
+            g_camFingerId = (SDL_FingerID)-1;
+        }
+
+        // Buttons are hit-tested against every finger except the stick's and the camera's.
         std::vector<ImVec2> pts;
         pts.reserve(fps.size());
         for (const auto& fp : fps)
-            if (fp.id != g_stickFingerId)
+            if (fp.id != g_stickFingerId && fp.id != g_rstickFingerId && fp.id != g_camFingerId)
                 pts.push_back(fp.pos);
 
         dl->AddCircleFilled(stickC, baseR, IM_COL32(0, 0, 0, stickActive ? 90 : 55), 48);
@@ -582,6 +727,8 @@ void TouchControls::Draw()
     // -----------------------------------------------------------------------
     g_state = {};
     g_stickFingerId = (SDL_FingerID)-1;
+    g_rstickFingerId = (SDL_FingerID)-1;
+    g_camFingerId = (SDL_FingerID)-1;
 
     // Dimmed backdrop.
     dl->AddRectFilled({ 0.0f, 0.0f }, { vw, vh }, IM_COL32(0, 0, 0, 120));
