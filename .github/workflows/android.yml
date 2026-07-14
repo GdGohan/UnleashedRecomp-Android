@@ -31,10 +31,6 @@ env:
 
 jobs:
   build:
-    - name: Fix dxc permissions
-      run: |
-        chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
-    
     name: Build APK (arm64-v8a)
     runs-on: ubuntu-24.04
     steps:
@@ -147,6 +143,10 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
+      - name: Fix dxc permissions
+        run: |
+          chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
+    
       - name: Build native libraries
         run: |
           cmake --build out/build/android-arm64 \
