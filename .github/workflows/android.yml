@@ -183,7 +183,7 @@ jobs:
 
       - name: Apply custom Android changes
         run: |
-          python3 patches/Icons.py
+          python3 patches/patcher.py
 
       - name: Build APK
         working-directory: android-apk
