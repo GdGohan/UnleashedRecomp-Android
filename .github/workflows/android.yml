@@ -231,10 +231,11 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          REPOSITORY_URL: ${{ github.event.repository.html_url }}
         run: |
-          NOTES="Fork based on:
-      ${{ github.event.repository.html_url }}"
-        
+          NOTES="Fork based on: 
+        $REPOSITORY_URL"
+
           if [ -n "$RELEASE_NOTES" ]; then
             NOTES="$NOTES
         
