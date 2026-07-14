@@ -59,7 +59,7 @@ jobs:
       - name: Check out game files (private repo)
         uses: actions/checkout@v4
         with:
-          repository: vars.GAME_FILES_REPO
+          repository: ${{ vars.GAME_FILES_REPO }}
           token: ${{ secrets.GAME_FILES_TOKEN }}
           path: game-files
 
@@ -210,6 +210,7 @@ jobs:
           if-no-files-found: error
           
       - name: Get original version
+        if: | github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -224,7 +225,7 @@ jobs:
           echo "Original version: $VERSION"
       
       - name: Create Release if needed
-        if: github.event_name == 'push' || github.event.inputs.release_type != 'none'
+        if: | github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
@@ -255,7 +256,7 @@ jobs:
           fi
 
       - name: Upload APK to Release
-        if: github.event_name == 'push' || github.event.inputs.release_type != 'none'
+        if: | github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
