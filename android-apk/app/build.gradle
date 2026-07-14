@@ -9,7 +9,7 @@ else {
 
 android {
     if (buildAsApplication) {
-        namespace "com.sega.sonicunr"
+        namespace "org.libsdl.app"
     }
     compileSdkVersion 34
     ndkVersion "29.0.14206865"
