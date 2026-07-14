@@ -197,7 +197,7 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
             export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/keystore.jks"
-            ./gradlew --no-daemon assembleRelease
+            ./gradlew --no-daemon assembleDebug
           else
             ./gradlew --no-daemon assembleDebug
           fi
