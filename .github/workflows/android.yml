@@ -40,8 +40,8 @@ jobs:
       - name: Check out game files (private repo)
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.GAME_FILES_REPO }}
-          token: ${{ secrets.GAME_FILES_TOKEN }}
+          repository: GdGohan/Private
+          token: ${{ secrets.ASSETS_REPO_TOKEN }}
           path: game-files
 
       - name: Stage game files
