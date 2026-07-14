@@ -235,7 +235,9 @@ jobs:
         run: |
           NOTES="Fork based on: 
           $REPOSITORY_URL"
-
+            
+          RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
+          
           if [ -n "$RELEASE_NOTES" ]; then
             NOTES="$NOTES
         
