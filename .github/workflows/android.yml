@@ -90,14 +90,23 @@ jobs:
           cd tools/XenosRecomp/thirdparty/zstd
           unzip -o build.zip
           cd -
+
+      - name: Install clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ccache ninja-build
     
       - name: Build host tools
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
+          CC: clang
+          CXX: clang++
         run: |
           cmake -S . -B out/build/host-tools -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DUNLEASHED_RECOMP_HOST_TOOLS_ONLY=ON \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build out/build/host-tools --target XenonRecomp XenosRecomp file_to_c x_decompress
