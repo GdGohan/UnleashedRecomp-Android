@@ -1,9 +1,58 @@
 #!/usr/bin/env python3
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import re
 
+import shutil
+import tempfile
+import zipfile
 
+
+SU_ZIP = Path(__file__).resolve().parent / "su.zip"
+
+PROJECT_RES = ROOT / "android-apk/app/src/main/res"
+PROJECT_JAVA = ROOT / "android-apk/app/src/main/java"
+
+
+def copy_tree(src: Path, dst: Path):
+    if not src.exists():
+        return
+
+    for item in src.rglob("*"):
+        rel = item.relative_to(src)
+        target = dst / rel
+
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+
+
+def extract_resources():
+    if not SU_ZIP.exists():
+        print("su.zip não encontrado.")
+        return
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+
+        with zipfile.ZipFile(SU_ZIP, "r") as z:
+            z.extractall(tmp)
+
+        res = tmp / "res"
+        java = tmp / "java"
+
+        print("Copiando res...")
+        copy_tree(res, PROJECT_RES)
+
+        print("Copiando java...")
+        copy_tree(java, PROJECT_JAVA)
+
+        print("Arquivos copiados.")
+        
+        
 ROOT = Path(__file__).resolve().parent.parent
 
 MANIFEST = ROOT / "android-apk/app/src/main/AndroidManifest.xml"
@@ -193,11 +242,23 @@ def patch_manifest():
     # permissões
     for p in PERMISSIONS.strip().split("\n"):
         if p.strip() not in text:
-            text = text.replace(
-                "<manifest",
-                "<manifest\n" + p,
-                1
-            )
+            m = re.search(r"<manifest[^>]*>", text, re.S)
+
+            if m:
+                manifest_tag = m.group(0)
+            
+                permissions = "\n".join(
+                    p.strip()
+                    for p in PERMISSIONS.strip().splitlines()
+                    if p.strip() not in text
+                )
+            
+                if permissions:
+                    text = text.replace(
+                        manifest_tag,
+                        manifest_tag + "\n\n" + permissions,
+                        1
+                    )
 
     # remove launcher intent original
     text = re.sub(
@@ -211,7 +272,7 @@ def patch_manifest():
     )
 
     # aliases
-    if ".NightIcon" not in text:
+    if ".DayIcon" not in text:
         text = text.replace(
             "</application>",
             ALIASES + "\n\n</application>"
@@ -219,6 +280,12 @@ def patch_manifest():
         
     text = fix_manifest_classes(text)
 
+    try:
+        ET.fromstring(text)
+    except ET.ParseError as e:
+        print("Manifest inválido:", e)
+        raise
+    
     MANIFEST.write_text(text)
 
 
@@ -302,23 +369,23 @@ def fix_manifest_classes(text):
             value = name_match.group(1)
 
             # já correto
-            if value.startswith(PACKAGE2 + "."):
-                return f'android:name="{value}"'
+            # if value.startswith(PACKAGE2 + "."):
+            #    return f'android:name="{value}"'
 
             # classe relativa: .MinhaActivity
-            if value.startswith("."):
-                return f'android:name="{PACKAGE2}{value}"'
+            # if value.startswith("."):
+            #    return f'android:name="{PACKAGE2}{value}"'
 
             # classes AndroidX, SDL, bibliotecas etc. ficam intactas
-            if value.startswith("android.") or value.startswith("androidx."):
-                return f'android:name="{value}"'
+            # if value.startswith("android.") or value.startswith("androidx."):
+            #    return f'android:name="{value}"'
 
-            if value.startswith("org.libsdl."):
-                return f'android:name="{value}"'
+            # if value.startswith("org.libsdl."):
+            #    return f'android:name="{value}"'
 
             # qualquer classe sem pacote
-            if "." not in value:
-                return f'android:name="{PACKAGE2}.{value}"'
+            # if "." not in value:
+            #    return f'android:name="{PACKAGE2}.{value}"'
 
             # outro pacote: deixa intacto
             return f'android:name="{value}"'
@@ -348,6 +415,8 @@ def fix_manifest_classes(text):
 if __name__ == "__main__":
 
     print("Aplicando patch Android...")
+    
+    extract_resources()
     
     patch_package_name()
     print("Pacote Gradle atualizado")
