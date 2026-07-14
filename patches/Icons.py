@@ -14,6 +14,18 @@ LAUNCHER = ROOT / "android-apk/app/src/main/java/org/libsdl/app/LauncherActivity
 
 ALIASES = r'''
         <activity-alias
+            android:name=".DayIcon"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:targetActivity="org.libsdl.app.LauncherActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        
+        <activity-alias
             android:name=".NightIcon"
             android:enabled="false"
             android:exported="true"
