@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.view.WindowManager;
 """
 
 def copy_tree(src: Path, dst: Path):
@@ -461,6 +462,68 @@ def patch_cutout():
     MANIFEST.write_text(text)    
     
     
+def patch_signing():
+
+    for gradle in GRADLE_FILES:
+
+        if not gradle.exists():
+            continue
+
+        text = gradle.read_text()
+
+        # já aplicado
+        if "ANDROID_KEYSTORE_FILE" in text:
+            print("Signing já configurado:", gradle)
+            continue
+
+
+        SIGNING = r'''
+
+    signingConfigs {
+        release {
+            if (System.getenv("ANDROID_KEYSTORE_FILE") != null) {
+                storeFile file(System.getenv("ANDROID_KEYSTORE_FILE"))
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+'''
+
+
+        # adiciona antes do buildTypes
+        if "buildTypes {" in text:
+
+            text = text.replace(
+                "buildTypes {",
+                SIGNING + "\n    buildTypes {",
+                1
+            )
+
+        else:
+            # fallback
+            text = text.replace(
+                "}",
+                SIGNING + "\n}",
+                1
+            )
+
+
+        # liga release
+        text = re.sub(
+            r'(release\s*\{)',
+            r'\1\n            signingConfig signingConfigs.release',
+            text,
+            count=1
+        )
+
+
+        gradle.write_text(text)
+
+        print("Signing adicionado:", gradle)
+        
+        
 if __name__ == "__main__":
 
     print("Aplicando patch Android...")
@@ -475,6 +538,9 @@ if __name__ == "__main__":
     
     patch_cutout()
     print("Updated cutout")
+    
+    patch_signing()
+    print("Updated Gradle signing")
 
     patch_launcher()
     print("Updated LauncherActivity")
