@@ -9,6 +9,8 @@ import tempfile
 import zipfile
 
 
+ROOT = Path(__file__).resolve().parent.parent
+
 SU_ZIP = Path(__file__).resolve().parent / "su.zip"
 
 PROJECT_RES = ROOT / "android-apk/app/src/main/res"
@@ -52,8 +54,6 @@ def extract_resources():
 
         print("Arquivos copiados.")
         
-        
-ROOT = Path(__file__).resolve().parent.parent
 
 MANIFEST = ROOT / "android-apk/app/src/main/AndroidManifest.xml"
 
