@@ -11,6 +11,10 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
+PACKAGE = "com.sega.sonicunr"
+
+PACKAGE2 = "org.libsdl.app"
+
 SU_ZIP = Path(__file__).resolve().parent / "su.zip"
 
 PROJECT_RES = ROOT / "android-apk/app/src/main/res"
@@ -71,7 +75,7 @@ LAUNCHER = ROOT / "android-apk/app/src/main/java/org/libsdl/app/LauncherActivity
 
 ALIASES = r'''
         <activity-alias
-            android:name=".DayIcon"
+            android:name="{PACKAGE}.DayIcon"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
@@ -83,7 +87,7 @@ ALIASES = r'''
         </activity-alias>
         
         <activity-alias
-            android:name=".NightIcon"
+            android:name="{PACKAGE}.NightIcon"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher2"
@@ -96,7 +100,7 @@ ALIASES = r'''
 
         <activity-alias
             android:icon="@mipmap/ic_launcher3"
-            android:name=".EclipseIcon"
+            android:name="{PACKAGE}.EclipseIcon"
             android:enabled="false"
             android:exported="true"
             android:targetActivity="org.libsdl.app.LauncherActivity">
@@ -108,7 +112,7 @@ ALIASES = r'''
 
         <activity-alias
             android:icon="@mipmap/ic_launcher4"
-            android:name=".EclipseIcon2"
+            android:name="{PACKAGE}.EclipseIcon2"
             android:enabled="false"
             android:exported="true"
             android:targetActivity="org.libsdl.app.LauncherActivity">
@@ -120,7 +124,7 @@ ALIASES = r'''
 
         <activity-alias
             android:icon="@mipmap/ic_launcher_hw"
-            android:name=".HwDayIcon"
+            android:name="{PACKAGE}.HwDayIcon"
             android:enabled="false"
             android:exported="true"
             android:targetActivity="org.libsdl.app.LauncherActivity">
@@ -132,7 +136,7 @@ ALIASES = r'''
 
         <activity-alias
             android:icon="@mipmap/ic_launcher_hw2"
-            android:name=".HwNightIcon"
+            android:name="{PACKAGE}.HwNightIcon"
             android:enabled="false"
             android:exported="true"
             android:targetActivity="org.libsdl.app.LauncherActivity">
@@ -143,7 +147,7 @@ ALIASES = r'''
         </activity-alias>
 
         <receiver
-            android:name=".BootReceiver"
+            android:name="{PACKAGE}.BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -153,7 +157,7 @@ ALIASES = r'''
         </receiver>
 
         <receiver
-            android:name=".AlarmReceiver"
+            android:name="{PACKAGE}.AlarmReceiver"
             android:enabled="true"
             android:exported="false"/>
 '''
@@ -283,7 +287,7 @@ def patch_manifest():
     if ".DayIcon" not in text:
         text = text.replace(
             "</application>",
-            ALIASES + "\n\n</application>"
+            ALIASES.format(PACKAGE=PACKAGE) + "\n\n</application>"
         )
         
     text = fix_manifest_classes(text)
@@ -332,10 +336,6 @@ def patch_launcher():
 
     LAUNCHER.write_text(text)
 
-
-PACKAGE = "com.sega.sonicunr"
-
-PACKAGE2 = "org.libsdl.app"
 
 GRADLE_FILES = [
     ROOT / "android-apk/app/build.gradle",
