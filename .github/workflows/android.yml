@@ -234,13 +234,13 @@ jobs:
           REPOSITORY_URL: ${{ github.event.repository.html_url }}
         run: |
           NOTES="Fork based on: 
-        $REPOSITORY_URL"
+          $REPOSITORY_URL"
 
           if [ -n "$RELEASE_NOTES" ]; then
             NOTES="$NOTES
         
-      User notes:
-      $RELEASE_NOTES"
+            User notes:
+            $RELEASE_NOTES"
           fi
         
           FLAGS=""
