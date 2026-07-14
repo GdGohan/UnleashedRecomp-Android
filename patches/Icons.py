@@ -16,6 +16,14 @@ SU_ZIP = Path(__file__).resolve().parent / "su.zip"
 PROJECT_RES = ROOT / "android-apk/app/src/main/res"
 PROJECT_JAVA = ROOT / "android-apk/app/src/main/java"
 
+IMPORTS = """
+import android.Manifest;
+import android.app.AlarmManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
+"""
 
 def copy_tree(src: Path, dst: Path):
     if not src.exists():
@@ -312,6 +320,11 @@ def patch_launcher():
             JAVA_METHODS +
             "\n" +
             text[pos:]
+        )
+        
+        text = text.replace(
+            "import android.view.Window;",
+            "import android.view.Window;\n" + IMPORTS
         )
 
     LAUNCHER.write_text(text)
