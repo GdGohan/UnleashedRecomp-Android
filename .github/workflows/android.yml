@@ -85,6 +85,12 @@ jobs:
       # Code-generation tools must run on the build host, so they are built in a
       # separate native pass and handed to the cross build as prebuilt binaries
       # (mirrors build_host_tools.bat + build_android_configure.bat on Windows).
+      - name: Extract zstd build
+        run: |
+          cd tools/XenosRecomp/thirdparty/zstd
+          unzip -o build.zip
+          cd -
+    
       - name: Build host tools
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
