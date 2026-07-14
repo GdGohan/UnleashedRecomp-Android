@@ -20,9 +20,14 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "Additional release notes"
+        required: false
+        default: ""
   push:
     tags: ["v*"]
-
+    
 concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
@@ -202,8 +207,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(gh api repos/SansNope/UnleashedRecomp/releases/latest --jq '.tag_name')
-        
+          VERSION=$(gh api repos/${{ github.repository }} --jq '.parent.full_name' | xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
+          
           if [ -z "$VERSION" ]; then
             echo "::error::Could not get original version"
             exit 1
@@ -220,7 +225,20 @@ jobs:
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
               --title "Latest" \
-              --notes $'- Day and Night Icons\n- Game Event Icons\n- Event Icons\n- Icon change notification'
+              --notes "$(cat <<EOF
+            Fork based on:
+            ${{ github.event.repository.html_url }}
+            
+            Changes:
+            - Day and Night Icons
+            - Game Event Icons
+            - Event Icons
+            - Icon change notification
+            
+            User notes:
+            ${{ github.event.inputs.release_notes }}
+            EOF
+            )"
           fi
 
       - name: Upload APK to Release
