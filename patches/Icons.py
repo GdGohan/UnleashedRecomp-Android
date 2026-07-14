@@ -216,6 +216,8 @@ def patch_manifest():
             "</application>",
             ALIASES + "\n\n</application>"
         )
+        
+    text = fix_manifest_classes(text)
 
     MANIFEST.write_text(text)
 
@@ -248,10 +250,107 @@ def patch_launcher():
     LAUNCHER.write_text(text)
 
 
+PACKAGE = "com.sega.sonicunr"
 
+PACKAGE2 = "org.libsdl.app"
+
+GRADLE_FILES = [
+    ROOT / "android-apk/app/build.gradle",
+    ROOT / "android-apk/app/build.gradle.kts",
+]
+
+
+def patch_package_name():
+
+    # Corrige Gradle
+    for gradle in GRADLE_FILES:
+        if gradle.exists():
+            text = gradle.read_text()
+
+            # text = re.sub(
+            #    r'(namespace\s*=\s*")[^"]+(")',
+            #    rf'\g<1>{PACKAGE}\g<2>',
+            #    text
+            # )
+
+            text = re.sub(
+                r'(applicationId\s*=\s*")[^"]+(")',
+                rf'\g<1>{PACKAGE}\g<2>',
+                text
+            )
+
+            gradle.write_text(text)
+
+
+def fix_manifest_classes(text):
+
+    COMPONENTS = (
+        "activity",
+        "activity-alias",
+        "service",
+        "receiver",
+        "provider",
+    )
+
+    def fix_component(match):
+
+        tag = match.group(1)
+        body = match.group(2)
+
+        def fix_name(name_match):
+
+            value = name_match.group(1)
+
+            # já correto
+            if value.startswith(PACKAGE2 + "."):
+                return f'android:name="{value}"'
+
+            # classe relativa: .MinhaActivity
+            if value.startswith("."):
+                return f'android:name="{PACKAGE2}{value}"'
+
+            # classes AndroidX, SDL, bibliotecas etc. ficam intactas
+            if value.startswith("android.") or value.startswith("androidx."):
+                return f'android:name="{value}"'
+
+            if value.startswith("org.libsdl."):
+                return f'android:name="{value}"'
+
+            # qualquer classe sem pacote
+            if "." not in value:
+                return f'android:name="{PACKAGE2}.{value}"'
+
+            # outro pacote: deixa intacto
+            return f'android:name="{value}"'
+
+
+        body = re.sub(
+            r'android:name="([^"]+)"',
+            fix_name,
+            body
+        )
+
+        return f"<{tag}{body}>"
+
+    pattern = (
+        r"<("
+        + "|".join(COMPONENTS)
+        + r")\b([^>]*)>"
+    )
+
+    return re.sub(
+        pattern,
+        fix_component,
+        text
+    )
+    
+    
 if __name__ == "__main__":
 
     print("Aplicando patch Android...")
+    
+    patch_package_name()
+    print("Pacote Gradle atualizado")
 
     patch_manifest()
     print("Manifest atualizado")
