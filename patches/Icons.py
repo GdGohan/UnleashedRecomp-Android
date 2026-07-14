@@ -305,11 +305,11 @@ def patch_launcher():
     if "checkNotificationPermission()" not in text:
 
         # adiciona chamadas no onCreate
-        text = text.replace(
-            "super.onCreate(savedInstanceState);",
-            "super.onCreate(savedInstanceState);\n" +
-            ONCREATE_CALLS,
-            1
+        text = re.sub(
+            r"super\.onCreate\(\s*\w+\s*\);",
+            lambda m: m.group(0) + "\n" + ONCREATE_CALLS,
+            text,
+            count=1
         )
 
         # adiciona métodos antes do último }
@@ -431,8 +431,8 @@ if __name__ == "__main__":
     
     extract_resources()
     
-    patch_package_name()
-    print("Pacote Gradle atualizado")
+    # patch_package_name()
+    # print("Pacote Gradle atualizado")
 
     patch_manifest()
     print("Manifest atualizado")
