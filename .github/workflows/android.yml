@@ -226,19 +226,13 @@ jobs:
             gh release create "$RELEASE_TAG" \
               --title "Latest" \
               --notes "$(cat <<EOF
-            Fork based on:
-            ${{ github.event.repository.html_url }}
-            
-            Changes:
-            - Day and Night Icons
-            - Game Event Icons
-            - Event Icons
-            - Icon change notification
-            
-            User notes:
-            ${{ github.event.inputs.release_notes }}
-            EOF
-            )"
+Fork based on:
+${{ github.event.repository.html_url }}
+
+User notes:
+${{ github.event.inputs.release_notes }}
+EOF
+)"
           fi
 
       - name: Upload APK to Release
