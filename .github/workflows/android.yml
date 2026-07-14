@@ -15,6 +15,9 @@
 #   - secret `ANDROID_KEY_PASSWORD`
 name: Android APK
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -94,7 +97,7 @@ jobs:
       - name: Install clang
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang ccache ninja-build
+          sudo apt-get install -y clang
     
       - name: Build host tools
         env:
@@ -194,12 +197,43 @@ jobs:
           name: UnleashedRecomp-Android-${{ github.ref_name }}
           path: android-apk/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-
-      - name: Attach APK to release
-        if: github.ref_type == 'tag'
+          
+      - name: Get original version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          find android-apk/app/build/outputs/apk -name '*.apk' -print0 |
-            xargs -0 gh release upload "$GITHUB_REF_NAME" --clobber || \
-            echo "No release for $GITHUB_REF_NAME yet; APK stays available as a workflow artifact."
+          VERSION=$(gh api repos/SansNope/UnleashedRecomp/releases/latest --jq '.tag_name')
+        
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not get original version"
+            exit 1
+          fi
+        
+          echo "RELEASE_TAG=$VERSION-gdmod" >> $GITHUB_ENV
+          echo "Original version: $VERSION"
+      
+      - name: Create Release if needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --title "Latest" \
+              --notes $'- Day and Night Icons\n- Game Event Icons\n- Event Icons\n- Icon change notification'
+          fi
+
+      - name: Upload APK to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
+        
+          if [ -z "$APK" ]; then
+            echo "::error::APK not found"
+            exit 1
+          fi
+        
+          gh release upload "$RELEASE_TAG" "$APK" --clobber
+          
