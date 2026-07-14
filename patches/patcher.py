@@ -524,6 +524,91 @@ def patch_signing():
         print("Signing adicionado:", gradle)
         
         
+def patch_disable_obfuscation():
+    for gradle in GRADLE_FILES:
+        if not gradle.exists():
+            continue
+
+        text = gradle.read_text()
+
+        # Desativa ofuscação
+        text = re.sub(
+            r'minifyEnabled\s+true',
+            'minifyEnabled false',
+            text
+        )
+
+        # Desativa shrink de recursos
+        text = re.sub(
+            r'shrinkResources\s+true',
+            'shrinkResources false',
+            text
+        )
+
+        # Kotlin DSL
+        text = re.sub(
+            r'isMinifyEnabled\s*=\s*true',
+            'isMinifyEnabled = false',
+            text
+        )
+
+        text = re.sub(
+            r'isShrinkResources\s*=\s*true',
+            'isShrinkResources = false',
+            text
+        )
+
+        gradle.write_text(text)
+
+        print("Obfuscação desativada:", gradle)
+        
+        
+def patch_debug_signing():
+    for gradle in GRADLE_FILES:
+        if not gradle.exists():
+            continue
+
+        text = gradle.read_text()
+
+        # Já configurado
+        if "debug {" in text and "signingConfigs.ci" in text:
+            print("Debug signing já configurado:", gradle)
+            continue
+
+        # Adiciona signingConfig no debug existente
+        if re.search(r'debug\s*\{', text):
+            text = re.sub(
+                r'(debug\s*\{)',
+                r'''\1
+            if (System.getenv("ANDROID_KEYSTORE_FILE") != null) {
+                signingConfig signingConfigs.ci
+            }
+''',
+                text,
+                count=1
+            )
+
+        else:
+            # Cria debug se não existir
+            text = re.sub(
+                r'(buildTypes\s*\{)',
+                r'''\1
+        debug {
+            if (System.getenv("ANDROID_KEYSTORE_FILE") != null) {
+                signingConfig signingConfigs.ci
+            }
+        }
+
+''',
+                text,
+                count=1
+            )
+
+        gradle.write_text(text)
+
+        print("Debug signing adicionado:", gradle)
+        
+        
 if __name__ == "__main__":
 
     print("Aplicando patch Android...")
@@ -539,8 +624,13 @@ if __name__ == "__main__":
     patch_cutout()
     print("Updated cutout")
     
-    patch_signing()
-    print("Updated Gradle signing")
+    patch_disable_obfuscation()
+    print("Disabled release obfuscation")
+    
+    patch_debug_signing()
+    print("Debug APK will use CI signing")
+    
+    patch_disable_obfuscation()
 
     patch_launcher()
     print("Updated LauncherActivity")
