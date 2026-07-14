@@ -148,6 +148,10 @@ jobs:
           done
           ls -la "$dest"
 
+      - name: Apply custom Android changes
+        run: |
+          python3 patches/Icons.py
+
       - name: Build APK
         working-directory: android-apk
         env:
