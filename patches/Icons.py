@@ -322,10 +322,13 @@ def patch_launcher():
             text[pos:]
         )
         
-        text = text.replace(
-            "import android.view.Window;",
-            "import android.view.Window;\n" + IMPORTS
-        )
+        imports = re.finditer(r"^import .+?;$", text, re.M)
+        imports = list(imports)
+        
+        if imports:
+            last = imports[-1]
+            pos = last.end()
+            text = text[:pos] + "\n" + IMPORTS + text[pos:]
 
     LAUNCHER.write_text(text)
 
