@@ -233,6 +233,21 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
         
           echo "Using release tag: $TAG"
+          
+      - name: Select random banner
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
+        run: |
+          BANNER=$(find extra/banners -type f \
+            \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) \
+            | shuf -n 1)
+        
+          if [ -z "$BANNER" ]; then
+            echo "::error::No banners found in extra/banners"
+            exit 1
+          fi
+        
+          echo "BANNER_PATH=$BANNER" >> "$GITHUB_ENV"
+          echo "BANNER_NAME=$(basename "$BANNER")" >> "$GITHUB_ENV"
       
       - name: Create Release if needed
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
@@ -241,9 +256,15 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
-          REPOSITORY_URL: ${{ github.event.repository.html_url }}
+          BANNER_PATH: ${{ env.BANNER_PATH }}
+          BANNER_NAME: ${{ env.BANNER_NAME }}
         run: |
-          NOTES="Release based on: 
+          PARENT_REPO=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty')
+          REPOSITORY_URL="https://github.com/$PARENT_REPO"
+          
+          NOTES="![BANNER_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH})
+          
+          Release based on:
           $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
             
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
