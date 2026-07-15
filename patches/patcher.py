@@ -73,6 +73,7 @@ MANIFEST = ROOT / "android-apk/app/src/main/AndroidManifest.xml"
 # Ajuste se o caminho for diferente
 LAUNCHER = ROOT / "android-apk/app/src/main/java/org/libsdl/app/LauncherActivity.java"
 
+SDLACTIVITY = ROOT / "android-apk/app/src/main/java/org/libsdl/app/SDLActivity.java"
 
 ALIASES = r'''
         <activity-alias
@@ -231,7 +232,9 @@ JAVA_METHODS = r'''
                 permissions,
                 grantResults);
     }
-    
+'''
+
+JAVA_METHODS2 = r'''
     private void enableDisplayCutout() {
 
         if (Build.VERSION.SDK_INT >= 28) {
@@ -248,9 +251,11 @@ JAVA_METHODS = r'''
     }
 '''
 
+ONCREATE_CALLS2 = """
+        enableDisplayCutout();
+"""
 
 ONCREATE_CALLS = """
-        enableDisplayCutout();
         checkNotificationPermission();
         checkExactAlarmPermission();
         checkExactLocPermission();
@@ -352,6 +357,41 @@ def patch_launcher():
             text = text[:pos] + "\n" + IMPORTS + text[pos:]
 
     LAUNCHER.write_text(text)
+    
+    
+def patch_sdlactivity():
+
+    text = SDLACTIVITY.read_text()
+
+    if "enableDisplayCutout()" not in text:
+
+        # adiciona chamadas no onCreate
+        text = re.sub(
+            r"super\.onCreate\(\s*\w+\s*\);",
+            lambda m: m.group(0) + "\n" + ONCREATE_CALLS2,
+            text,
+            count=1
+        )
+
+        # adiciona métodos antes do último }
+        pos = text.rfind("}")
+
+        text = (
+            text[:pos] +
+            JAVA_METHODS2 +
+            "\n" +
+            text[pos:]
+        )
+        
+        imports = re.finditer(r"^import .+?;$", text, re.M)
+        imports = list(imports)
+        
+        if imports:
+            last = imports[-1]
+            pos = last.end()
+            text = text[:pos] + "\n" + IMPORTS + text[pos:]
+
+    SDLACTIVITY.write_text(text)
 
 
 GRADLE_FILES = [
@@ -451,7 +491,7 @@ def patch_cutout():
     if "android:windowLayoutInDisplayCutoutMode" not in text:
 
         text = re.sub(
-            r'(<activity\b[^>]*android:name="org\.libsdl\.app\.LauncherActivity"[^>]*)(>)',
+            r'(<activity\b[^>]*android:name="org\.libsdl\.app\.SDLActivity"[^>]*)(>)',
             r'\1\n'
             r'            android:resizeableActivity="true"\n'
             r'            android:windowLayoutInDisplayCutoutMode="shortEdges"\2',
@@ -622,6 +662,7 @@ if __name__ == "__main__":
     print("Updated Manifest")
     
     patch_cutout()
+    patch_sdlactivity()
     print("Updated cutout")
     
     patch_disable_obfuscation()
