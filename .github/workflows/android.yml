@@ -208,21 +208,31 @@ jobs:
           name: UnleashedRecomp-Android-${{ github.ref_name }}
           path: android-apk/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-          
-      - name: Get original version
+      
+      - name: Get release tag
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty' | xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
-          
-          if [ -z "$VERSION" ]; then
+          BASE_TAG=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty' | \
+            xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
+        
+          if [ -z "$BASE_TAG" ]; then
             echo "::error::Could not get original version"
             exit 1
           fi
         
-          echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
-          echo "Original version: $VERSION"
+          TAG="$BASE_TAG"
+          N=2
+        
+          while gh release view "$TAG" >/dev/null 2>&1; do
+            TAG="${BASE_TAG}-${N}"
+            N=$((N + 1))
+          done
+        
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+        
+          echo "Using release tag: $TAG"
       
       - name: Create Release if needed
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
@@ -251,12 +261,10 @@ jobs:
             FLAGS="--prerelease"
           fi
         
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" \
-              --title "$RELEASE_TAG" \
-              --notes "$NOTES" \
-              $FLAGS
-          fi
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
+            --notes "$NOTES" \
+            $FLAGS
 
       - name: Upload APK to Release
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
