@@ -237,7 +237,7 @@ jobs:
       - name: Select random banner
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         run: |
-          BANNER=$(find extra/banners -type f \
+          BANNER=$(find patches/banners -type f \
             \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) \
             | shuf -n 1)
         
