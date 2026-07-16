@@ -316,7 +316,6 @@ jobs:
           while IFS= read -r img; do
             [ -n "$img" ] && git add "$img"
           done <<< "$NOTES_IMAGE_PATHS"
-          git add -A -- patches/images/bg-final*.png
           git diff --cached --quiet || git commit -m "chore: update release notes image [skip ci]"
           git push
 
