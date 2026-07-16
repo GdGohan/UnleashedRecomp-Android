@@ -328,15 +328,22 @@ jobs:
           REPOSITORY_URL="https://github.com/$PARENT_REPO"
 
           # Top banner: always shown, unrelated to the notes toggle.
-          NOTES="![$BANNER_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH})"
+          NOTES="<p align=\"center\">
+            <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
+          </p>"
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
+
+          Release based on:
+          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
 
           if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATH" ]; then
             # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
             NOTES="$NOTES
 
-          ![$NOTES_IMAGE_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH})"
+          <p align=\"center\">
+            <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH}\" alt=\"$NOTES_IMAGE_NAME\">
+          </p>"
           elif [ -n "$RELEASE_NOTES" ]; then
             # Notes as plain text.
             NOTES="$NOTES
@@ -346,9 +353,6 @@ jobs:
           fi
 
           NOTES="$NOTES
-
-          Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
 
           FLAGS=""
 
