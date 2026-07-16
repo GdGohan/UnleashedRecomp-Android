@@ -368,17 +368,17 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           COMPILE_APK: ${{ github.event_name == 'push' && 'true' || github.event.inputs.compile_apk }}
         run: |
-          APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
-
           if [ "$COMPILE_APK" = "true" ]; then
+            APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
             if [ -z "$APK" ]; then
               echo "::error::APK not found"
               exit 1
             fi
+            NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
+
+            cp "$APK" "$NEW_NAME"
+
+            gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
+          elif 
+            gh release "$RELEASE_TAG"
           fi
-
-          NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
-
-          cp "$APK" "$NEW_NAME"
-
-          gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
