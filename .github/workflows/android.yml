@@ -13,7 +13,7 @@
 #   - secret `ANDROID_KEYSTORE_PASSWORD`
 #   - secret `ANDROID_KEY_ALIAS`
 #   - secret `ANDROID_KEY_PASSWORD`
-name: Android APK
+name: Android Build
 
 permissions:
   contents: write
@@ -36,6 +36,11 @@ on:
           - prerelease
       use_banner_image:
         description: "Include banner image in release notes"
+        type: boolean
+        required: true
+        default: true
+      compile_apk:
+        description: "Compile the APK"
         type: boolean
         required: true
         default: true
@@ -69,31 +74,37 @@ jobs:
           path: game-files
 
       - name: Stage game files
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           install -m 644 game-files/default.xex game-files/default.xexp game-files/shader.ar UnleashedRecompLib/private/
           rm -rf game-files
 
       - name: Install build dependencies
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build ccache clang
 
       - name: Set up JDK 17
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Install Android NDK
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" >/dev/null
 
       - name: Set up vcpkg
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           git clone https://github.com/microsoft/vcpkg thirdparty/vcpkg
           git -C thirdparty/vcpkg checkout "$VCPKG_COMMIT"
           thirdparty/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Cache vcpkg binary archives
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
@@ -101,6 +112,7 @@ jobs:
           restore-keys: vcpkg-${{ runner.os }}-
 
       - name: Set up ccache
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: android-arm64
@@ -110,12 +122,14 @@ jobs:
       # separate native pass and handed to the cross build as prebuilt binaries
       # (mirrors build_host_tools.bat + build_android_configure.bat on Windows).
       - name: Extract zstd build
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           cd tools/XenosRecomp/thirdparty/zstd
           unzip -o build.zip
           cd -
 
       - name: Build host tools
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
           CC: clang
@@ -140,6 +154,7 @@ jobs:
           done
 
       - name: Configure Android build
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
         run: |
@@ -163,15 +178,18 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Fix dxc permissions
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
 
       - name: Build native libraries
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           cmake --build out/build/android-arm64 \
             --target UnleashedRecomp main_hook file_redirect_hook gsl_alloc_hook hook_impl
 
       - name: Stage jniLibs
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           dest=android-apk/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$dest"
@@ -187,10 +205,12 @@ jobs:
           ls -la "$dest"
 
       - name: Apply custom Android changes
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           python3 patches/patcher.py
 
       - name: Build APK
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         working-directory: android-apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -208,6 +228,7 @@ jobs:
           fi
 
       - name: Upload APK artifact
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         uses: actions/upload-artifact@v4
         with:
           name: UnleashedRecomp-Android-${{ github.ref_name }}
@@ -343,12 +364,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          COMPILE_APK: ${{ github.event_name == 'push' && 'true' || github.event.inputs.compile_apk }}
         run: |
           APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "::error::APK not found"
-            exit 1
+          if [ "$COMPILE_APK" = "true" ]; then
+            if [ -z "$APK" ]; then
+              echo "::error::APK not found"
+              exit 1
+            fi
           fi
 
           NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
