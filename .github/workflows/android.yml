@@ -249,6 +249,14 @@ jobs:
             exit 1
           fi
 
+          echo "RELEASE_TAG2=$BASE_TAG" >> "$GITHUB_ENV"
+
+          N=2
+          while gh release view "$BASE_TAG" >/dev/null 2>&1; do
+            BASE_TAG="${BASE_TAG}-${N}"
+            N=$((N + 1))
+          done
+
           echo "RELEASE_TAG=$BASE_TAG" >> "$GITHUB_ENV"
 
           echo "Using release tag: $BASE_TAG"
@@ -308,6 +316,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          RELEASE_TAG2: ${{ env.RELEASE_TAG2 }}
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
           USE_BANNER_IMAGE: ${{ github.event_name == 'push' && 'true' || github.event.inputs.use_banner_image }}
@@ -322,12 +331,9 @@ jobs:
           # Top banner: always shown, unrelated to the notes toggle.
           NOTES="<p align=\"center\">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
-          </p>"
 
-          NOTES="$NOTES
-
-          Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
+            Release based on:
+            $REPOSITORY_URL/releases/tag/$RELEASE_TAG2"
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
@@ -335,7 +341,6 @@ jobs:
             # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
             NOTES="$NOTES
 
-          <p align=\"center\">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH}\" alt=\"$NOTES_IMAGE_NAME\">
           </p>"
           elif [ -n "$RELEASE_NOTES" ]; then
@@ -371,12 +376,6 @@ jobs:
             exit 1
           fi
 
-          N=2
-          while gh release view "$RELEASE_TAG" >/dev/null 2>&1; do
-            RELEASE_TAG="${RELEASE_TAG}-${N}"
-            N=$((N + 1))
-          done
-        
           NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
 
           cp "$APK" "$NEW_NAME"
