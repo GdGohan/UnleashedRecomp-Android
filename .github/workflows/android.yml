@@ -283,6 +283,7 @@ jobs:
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')) &&
           (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
         run: |
+          pip3 install pillow
           python3 patches/draw_banner.py \
             --image "patches/images/bg-releases.png" \
             --font "patches/FOT-Seurat Pro M.otf" \
