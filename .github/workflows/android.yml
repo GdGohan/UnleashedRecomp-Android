@@ -251,13 +251,15 @@ jobs:
 
           echo "RELEASE_TAG2=$BASE_TAG" >> "$GITHUB_ENV"
 
+          TAG=$BASE_TAG
+
           N=2
-          while gh release view "$BASE_TAG" >/dev/null 2>&1; do
-            BASE_TAG="${BASE_TAG}-${N}"
+          while gh release view "$TAG" >/dev/null 2>&1; do
+            TAG="${BASE_TAG}-${N}"
             N=$((N + 1))
           done
 
-          echo "RELEASE_TAG=$BASE_TAG" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
 
           echo "Using release tag: $BASE_TAG"
 
@@ -365,7 +367,7 @@ jobs:
             $FLAGS
 
       - name: Upload APK to Release
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none' && github.event.inputs.compile_apk)
+        if: github.event.inputs.compile_apk != 'false' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'))
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
