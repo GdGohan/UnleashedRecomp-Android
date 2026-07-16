@@ -333,11 +333,13 @@ jobs:
           # Top banner: always shown, unrelated to the notes toggle.
           NOTES="<p align=\"center\">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
-
-            Release based on:<br>
+            </p>
+            <p align="center">
+            Release based on:
             <a href=\"$REPOSITORY_URL/releases/tag/$RELEASE_TAG2\">
               $PARENT_REPO@$RELEASE_TAG2
-            </a>"
+            </a>
+            </p>"
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
@@ -345,8 +347,9 @@ jobs:
             # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
             NOTES="$NOTES
 
+            <p align="center">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH}\" alt=\"$NOTES_IMAGE_NAME\">
-          </p>"
+            </p>"
           elif [ -n "$RELEASE_NOTES" ]; then
             # Notes as plain text.
             NOTES="$NOTES
