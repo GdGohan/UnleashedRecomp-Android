@@ -334,9 +334,6 @@ jobs:
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
-          Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
-
           if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATH" ]; then
             # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
             NOTES="$NOTES
@@ -352,7 +349,10 @@ jobs:
             $RELEASE_NOTES"
           fi
 
-          NOTES="$NOTES
+          NOTES="Release based on:
+          $REPOSITORY_URL/releases/tag/$RELEASE_TAG
+          
+          $NOTES"
 
           FLAGS=""
 
