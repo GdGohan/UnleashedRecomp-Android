@@ -379,6 +379,7 @@ jobs:
             cp "$APK" "$NEW_NAME"
 
             gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
-          elif 
-            gh release "$RELEASE_TAG"
+          else 
+            gh release view "$RELEASE_TAG"
+            echo "compile_apk=false, skipping APK upload."
           fi
