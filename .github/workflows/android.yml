@@ -334,8 +334,10 @@ jobs:
           NOTES="<p align=\"center\">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
 
-            Release based on:
-            $REPOSITORY_URL/releases/tag/$RELEASE_TAG2"
+            Release based on:<br>
+            <a href=\"$REPOSITORY_URL/releases/tag/$RELEASE_TAG2\">
+              $PARENT_REPO@$RELEASE_TAG2
+            </a>"
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
