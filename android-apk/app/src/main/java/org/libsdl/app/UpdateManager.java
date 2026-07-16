@@ -29,8 +29,11 @@ import java.util.Locale;
 
 /** GitHub release checker/downloader for issue #83. */
 final class UpdateManager {
+    private static final String RELEASE_REPOSITORY = BuildConfig.UPDATE_REPOSITORY;
     private static final String API_URL =
-        "https://api.github.com/repos/SansNope/UnleashedRecomp-Android/releases/latest";
+        "https://api.github.com/repos/" + RELEASE_REPOSITORY + "/releases/latest";
+    private static final String RELEASE_DOWNLOAD_PREFIX =
+        "https://github.com/" + RELEASE_REPOSITORY + "/releases/download/";
     private static final String PREFS = "updates";
     private static final String PENDING_INSTALL = "pending_install";
     private static final long MAX_API_BYTES = 2 * 1024 * 1024;
@@ -89,7 +92,7 @@ final class UpdateManager {
                     long size = apk.optLong("size", -1);
                     if (size <= 0 || size > MAX_APK_BYTES) throw new IOException("Invalid update APK size");
                     String url = apk.optString("browser_download_url", "");
-                    if (!url.startsWith("https://github.com/SansNope/UnleashedRecomp-Android/releases/")) {
+                    if (!url.startsWith(RELEASE_DOWNLOAD_PREFIX)) {
                         throw new IOException("Unexpected update download URL");
                     }
                     update = new UpdateInfo(version, release.optString("body", ""), url,
@@ -274,8 +277,11 @@ final class UpdateManager {
     }
 
     static int compareVersions(String left, String right) {
-        String[] a = normalizeVersion(left).split("[-+]", 2)[0].split("\\.");
-        String[] b = normalizeVersion(right).split("[-+]", 2)[0].split("\\.");
+        // The fork uses a numeric fourth component in tags such as 0.5.2-3.
+        // Treat separators uniformly so a newer fork build is not discarded as
+        // equal to its upstream base version.
+        String[] a = normalizeVersion(left).split("[.\\-+]");
+        String[] b = normalizeVersion(right).split("[.\\-+]");
         int count = Math.max(a.length, b.length);
         for (int index = 0; index < count; index++) {
             int av = index < a.length ? parseVersionPart(a[index]) : 0;

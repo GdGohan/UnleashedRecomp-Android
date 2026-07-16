@@ -48,7 +48,7 @@ For the smoothest first run, start with the default graphics settings. The Andro
 
 ## Installation
 
-1. Download the latest APK from the repository's [Releases](https://github.com/SansNope/UnleashedRecomp-Android/releases) page.
+1. Download the latest APK from this fork's [Releases](https://github.com/GdGohan/UnleashedRecomp-Android/releases) page.
 2. Allow your browser or file manager to install apps from unknown sources when Android asks.
 3. Install and open **UnleashedRecomp**. The first launch creates the app's folders and prepares the bundled graphics driver.
 4. Tap **Install game files (.zip / folder)** in the launcher and pick your game dump — either a ZIP archive or an extracted folder. The app finds the game inside the archive automatically, however the folders are nested, and copies everything into place with a progress display. You can also choose **ISO / update / DLC packages**, select the base game, title update and optional DLC files together, then launch once to verify and install them.
@@ -109,6 +109,8 @@ The mod manager also has a **Codes** section listing built-in game patches — f
 ## Updating the app
 
 The launcher checks this repository's latest GitHub release periodically and also provides a manual **Check for updates** button. Downloads are limited to the official release path, checked against GitHub's SHA-256 digest when available, and must carry the same Android signing certificate as the installed app before Android's package installer is opened. Game files, saves, mods and settings remain in place during an update.
+
+Builds older than `0.5.2-3` checked the upstream repository instead of this fork. Install `0.5.2-3` manually once from this fork's Releases page; later fork releases are then detected in-app normally.
 
 ## Graphics drivers
 

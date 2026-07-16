@@ -1,67 +1,76 @@
-# CI: building the APK with GitHub Actions
+# CI: building and publishing the Android APK
 
-The workflow at `.github/workflows/android.yml` builds the APK from source on an
-`ubuntu-24.04` runner. It runs on every `v*` tag push and can be started manually
-from the Actions tab (workflow_dispatch).
+The workflow at `.github/workflows/android.yml` validates the Android Java code
+on pull requests and builds the complete APK on every `v*` tag push or manual
+dispatch. Full builds run on `ubuntu-24.04` and require the private game inputs
+described below.
 
-## Required configuration
+## Required private game inputs
 
-The build needs three game-derived files that must never be committed to this
-public repository: `default.xex`, `default.xexp` and `shader.ar`. Keep them in a
-**private** repository and give the workflow access to it:
+The native build needs `default.xex`, `default.xexp` and `shader.ar`. These files
+must never be committed to this public repository. Keep them at the root of a
+private repository and configure:
 
-1. Create a private repository (e.g. `SansNope/UnleashedRecomp-GameFiles`)
-   containing `default.xex`, `default.xexp` and `shader.ar` at its root.
-2. In this repository's **Settings → Secrets and variables → Actions**:
-   - add a **variable** `GAME_FILES_REPO` with the `owner/name` of the private
-     repository;
-   - add a **secret** `GAME_FILES_TOKEN` with a fine-grained personal access
-     token that has read-only *Contents* permission for that single repository.
+| Type | Name | Value |
+| --- | --- | --- |
+| Repository variable | `GAME_FILES_REPO` | Private repository in `owner/name` form |
+| Repository secret | `GAME_FILES_TOKEN` | Fine-grained token with read-only Contents access to that repository |
 
-Note that a private repository limits distribution but does not change the legal
-status of game-derived data; keep access to it minimal.
+Private storage limits distribution but does not change the legal status of
+game-derived data. Keep access to it minimal.
 
-## Optional release signing
+## Release signing
 
-Without signing secrets the workflow produces a **debug** APK (signed with the
-runner's debug key — installable, but a different signature every run). To get a
-release APK signed with a stable key, add these secrets:
+The workflow always runs `assembleRelease`; it never publishes a debug APK. A
+manual build with publish mode `none` may produce an unsigned release artifact.
+Publishing requires every secret below and fails closed if one is absent:
 
 | Secret | Value |
 | --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | the keystore file, base64-encoded (`base64 -w0 keystore.jks`) |
-| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
-| `ANDROID_KEY_ALIAS` | key alias |
-| `ANDROID_KEY_PASSWORD` | key password |
+| `ANDROID_KEYSTORE_BASE64` | Keystore file encoded with `base64 -w0 keystore.jks` |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Key alias |
+| `ANDROID_KEY_PASSWORD` | Key password |
 
-Remember that installs only update in place when the signing key stays the same.
+Android only updates an existing install when the signing key stays the same.
+The workflow verifies the certificate fingerprint against the key used for the
+published GdGohan `v0.5.2-2` APK before it creates a release. If the key is lost,
+existing installations cannot be upgraded in place.
+
+## Versioning and publishing
+
+`versionCode` and `versionName` in `android-apk/app/build.gradle` are the source
+of truth. Increase `versionCode` for every public APK. The release tag must be
+`v` followed by the exact `versionName` (for example, `v0.5.2-3`). A mismatched
+tag fails before the native build begins.
+
+Manual dispatch defaults to publish mode `none`. Select `release` or
+`prerelease` only after committing the intended version bump. The release job
+downloads the already-verified artifact, creates a draft, uploads the APK, and
+only then makes the release visible.
 
 ## What the workflow does
 
-1. Checks out this repository plus the private game-files repository, staging
-   the latter into `UnleashedRecompLib/private/`.
-2. Builds the host code-generation tools (XenonRecomp, XenosRecomp, file_to_c,
-   x_decompress) natively for the runner — a `UNLEASHED_RECOMP_HOST_TOOLS_ONLY`
-   CMake pass, mirroring `build_host_tools.bat`.
-3. Clones vcpkg at the `builtin-baseline` from `vcpkg.json` and cross-compiles
-   `libmain.so` for `arm64-v8a` (NDK r29, `android-29`), passing the host tools
-   via `UNLEASHED_RECOMP_HOST_*` — mirroring `build_android_configure.bat`.
-   XenonRecomp regenerates the `ppc/` sources and XenosRecomp recompiles the
-   shader archive during this pass.
-4. Builds the libadrenotools hook libraries (`libmain_hook.so`,
-   `libfile_redirect_hook.so`, `libgsl_alloc_hook.so`, `libhook_impl.so`) from
-   the vendored sources and stages all native libraries into
-   `android-apk/app/src/main/jniLibs/arm64-v8a/`.
-5. Runs Gradle (`assembleRelease` when signing secrets are present, otherwise
-   `assembleDebug`) and uploads the APK as a workflow artifact. On tag builds it
-   also attaches the APK to the matching GitHub release when one exists.
+1. Pull requests run Java unit tests and Android Lint without private inputs.
+2. Tag/manual builds check out the source and private game-files repository.
+3. Host code-generation tools are built natively for the runner.
+4. vcpkg and NDK r29 cross-compile `libmain.so` and the AdrenoTools hook
+   libraries for `arm64-v8a`/Android 29.
+5. Gradle runs `assembleRelease`.
+6. The workflow checks package name, `versionCode`, `versionName`, `libmain.so`,
+   the absence of `debuggable`, the APK signature, and the established signing
+   certificate fingerprint.
+7. The verified APK is uploaded as an artifact. When publishing is enabled, a
+   separate write-scoped job creates a draft release, uploads the APK, and makes
+   it visible only after the upload succeeds.
 
-Both CMake passes use ccache and the vcpkg binary cache; the first run is slow
-(the ~265 generated `ppc_recomp.*.cpp` translation units dominate), repeat runs
-are much faster.
+Both CMake passes use ccache and the vcpkg binary cache. The first run is slow
+because the generated `ppc_recomp.*.cpp` translation units dominate; repeat
+runs are substantially faster.
 
-## Secrets and fork PRs
+## Secrets and fork pull requests
 
 GitHub does not expose secrets to workflows triggered by pull requests from
-forks, so the workflow deliberately runs only on tags and manual dispatch —
-never on PRs. Do not weaken that: it is what keeps `GAME_FILES_TOKEN` safe.
+forks. Pull requests therefore run only Java tests and Lint; the native build is
+skipped. Private game files and signing secrets are used only by tag/manual full
+builds, keeping `GAME_FILES_TOKEN` unavailable to untrusted pull-request code.

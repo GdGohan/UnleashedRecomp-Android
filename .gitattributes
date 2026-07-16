@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Archives and Android artifacts must never be normalized as text.
+*.zip -text
+*.apk -text

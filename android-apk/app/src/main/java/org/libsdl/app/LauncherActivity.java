@@ -1,13 +1,18 @@
 package org.libsdl.app;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.view.Gravity;
@@ -88,6 +93,18 @@ public final class LauncherActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+
+        checkNotificationPermission();
+        checkExactAlarmPermission();
+        checkExactLocPermission();
+
+        com.sega.sonicunr.LocationHelper.updateLastKnownLocation(this);
+
+        com.sega.sonicunr.AlarmScheduler.locAdjust(this);
+        com.sega.sonicunr.AlarmScheduler.applyCurrentIconState(this);
+        com.sega.sonicunr.AlarmScheduler.scheduleAll(this);
+        com.sega.sonicunr.EclipseScheduler.scheduleNextEclipse(this);
+
         prefs = getPreferences(MODE_PRIVATE);
         setContentView(buildPage());
         loadSettings();
@@ -1156,4 +1173,50 @@ public final class LauncherActivity extends Activity {
         if (bytes < 1024 * 1024) return (bytes / 1024) + " KiB";
         return String.format(Locale.ROOT, "%.1f MiB", bytes / (1024.0 * 1024.0));
     }
+
+    private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        2001
+                );
+            }
+        }
+    }
+
+    private void checkExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            AlarmManager alarmManager =
+                    (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+            if (alarmManager != null &&
+                    !alarmManager.canScheduleExactAlarms()) {
+
+                Intent intent = new Intent(
+                        android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+
+                intent.setData(
+                        android.net.Uri.parse("package:" + getPackageName()));
+
+                startActivity(intent);
+            }
+        }
+    }
+
+    private void checkExactLocPermission() {
+        if (checkSelfPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(
+                    new String[]{
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    3001
+            );
+        }
+    }
+
 }

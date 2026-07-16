@@ -1,22 +1,19 @@
-# Builds the Android APK from source on every tag push (v*) or manual dispatch.
+# Builds a non-debuggable Android release APK. Publishing additionally requires
+# the fork's long-lived signing key so in-app updates retain the same identity.
 #
-# Game-derived inputs (default.xex, default.xexp, shader.ar) cannot live in this
-# public repository. They are fetched from a private repository configured via:
-#   - repository VARIABLE `GAME_FILES_REPO`  - e.g. "SansNope/UnleashedRecomp-GameFiles"
-#   - repository SECRET  `GAME_FILES_TOKEN`  - fine-grained PAT with read-only
-#     Contents access to that single repository
-# The private repository must contain default.xex, default.xexp and shader.ar
-# at its root. See docs/ci.md for details.
+# Required private game inputs:
+#   - repository variable GAME_FILES_REPO
+#   - repository secret GAME_FILES_TOKEN
 #
-# Optional release signing (falls back to a debug build when unset):
-#   - secret `ANDROID_KEYSTORE_BASE64`   - keystore file, base64-encoded
-#   - secret `ANDROID_KEYSTORE_PASSWORD`
-#   - secret `ANDROID_KEY_ALIAS`
-#   - secret `ANDROID_KEY_PASSWORD`
+# Required for publishing:
+#   - ANDROID_KEYSTORE_BASE64
+#   - ANDROID_KEYSTORE_PASSWORD
+#   - ANDROID_KEY_ALIAS
+#   - ANDROID_KEY_PASSWORD
 name: Android APK
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   workflow_dispatch:
@@ -29,34 +26,103 @@ on:
         description: "Publish mode"
         type: choice
         required: true
-        default: release
+        default: none
         options:
           - none
           - release
           - prerelease
   push:
     tags: ["v*"]
-    
   pull_request:
-    
+
 concurrency:
   group: android-apk-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NDK_VERSION: "29.0.14206865"
-  # Must match "builtin-baseline" in vcpkg.json.
+  BUILD_TOOLS_VERSION: "34.0.0"
   VCPKG_COMMIT: b322364f06308bdd24823f9d8f03fe0cc86fd46f
+  # Certificate used by the already-published GdGohan v0.5.2-2 APK. Changing
+  # this fingerprint intentionally breaks Android's update chain.
+  EXPECTED_SIGNING_CERT_SHA256: dc7bdda9a75e1468722bf34facea630a30d40cfe8b5541de1d26f560fb35f1bb
 
 jobs:
-  build:
-    name: Build APK (arm64-v8a)
+  java-checks:
+    name: Android Java checks
     runs-on: ubuntu-24.04
     steps:
       - name: Check out sources
         uses: actions/checkout@v4
 
-      - name: Check out game files (private repo)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Run unit tests and Lint
+        working-directory: android-apk
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug
+
+  build:
+    name: Build release APK (arm64-v8a)
+    if: github.event_name != 'pull_request'
+    needs: java-checks
+    runs-on: ubuntu-24.04
+    outputs:
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Read and validate app version
+        id: version
+        env:
+          REQUESTED_RELEASE_TYPE: ${{ github.event.inputs.release_type || 'release' }}
+        run: |
+          set -euo pipefail
+          GRADLE_FILE=android-apk/app/build.gradle
+          VERSION_CODE=$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$GRADLE_FILE" | head -n 1)
+          VERSION_NAME=$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$GRADLE_FILE" | head -n 1)
+          if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
+            echo "::error::Could not read versionCode/versionName from $GRADLE_FILE"
+            exit 1
+          fi
+
+          RELEASE_TAG="v${VERSION_NAME}"
+          PUBLISH=false
+          if [ "$GITHUB_EVENT_NAME" = "push" ] || [ "$REQUESTED_RELEASE_TYPE" != "none" ]; then
+            PUBLISH=true
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_NAME" != "$RELEASE_TAG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match app version $RELEASE_TAG"
+            exit 1
+          fi
+
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "Building $RELEASE_TAG (versionCode $VERSION_CODE, publish=$PUBLISH)"
+
+      - name: Validate private build inputs
+        env:
+          GAME_FILES_REPO: ${{ vars.GAME_FILES_REPO }}
+          GAME_FILES_TOKEN: ${{ secrets.GAME_FILES_TOKEN }}
+        run: |
+          if [ -z "$GAME_FILES_REPO" ] || [ -z "$GAME_FILES_TOKEN" ]; then
+            echo "::error::GAME_FILES_REPO and GAME_FILES_TOKEN are required for the native build"
+            exit 1
+          fi
+
+      - name: Check out game files
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.GAME_FILES_REPO }}
@@ -79,8 +145,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android NDK
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" >/dev/null
+      - name: Install Android NDK and build tools
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;$NDK_VERSION" "build-tools;$BUILD_TOOLS_VERSION" >/dev/null
 
       - name: Set up vcpkg
         run: |
@@ -101,15 +169,10 @@ jobs:
           key: android-arm64
           max-size: 3G
 
-      # Code-generation tools must run on the build host, so they are built in a
-      # separate native pass and handed to the cross build as prebuilt binaries
-      # (mirrors build_host_tools.bat + build_android_configure.bat on Windows).
       - name: Extract zstd build
-        run: |
-          cd tools/XenosRecomp/thirdparty/zstd
-          unzip -o build.zip
-          cd -
-    
+        working-directory: tools/XenosRecomp/thirdparty/zstd
+        run: unzip -o build.zip
+
       - name: Build host tools
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
@@ -158,9 +221,8 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Fix dxc permissions
-        run: |
-          chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
-    
+        run: chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
+
       - name: Build native libraries
         run: |
           cmake --build out/build/android-arm64 \
@@ -168,6 +230,7 @@ jobs:
 
       - name: Stage jniLibs
         run: |
+          set -euo pipefail
           dest=android-apk/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$dest"
           cp out/build/android-arm64/UnleashedRecomp/libmain.so "$dest/"
@@ -181,127 +244,162 @@ jobs:
           done
           ls -la "$dest"
 
-      - name: Apply custom Android changes
-        run: |
-          python3 patches/patcher.py
-
-      - name: Build APK
+      - name: Build release APK
         working-directory: android-apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PUBLISH: ${{ steps.version.outputs.publish }}
         run: |
+          set -euo pipefail
           chmod +x gradlew
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+          if [ "$PUBLISH" = "true" ]; then
+            for value in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+              if [ -z "${!value:-}" ]; then
+                echo "::error::$value is required for a published release"
+                exit 1
+              fi
+            done
+          fi
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
             export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/keystore.jks"
-            ./gradlew --no-daemon assembleDebug
-          else
-            ./gradlew --no-daemon assembleDebug
+          fi
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Verify and stage APK
+        id: apk
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          PUBLISH: ${{ steps.version.outputs.publish }}
+        run: |
+          set -euo pipefail
+          APK=$(find android-apk/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          if [ -z "$APK" ]; then
+            echo "::error::Release APK not found"
+            exit 1
           fi
 
-      - name: Upload APK artifact
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          BADGING=$($AAPT dump badging "$APK")
+          echo "$BADGING" | grep -F "package: name='com.sega.sonicunr'"
+          echo "$BADGING" | grep -F "versionCode='$VERSION_CODE'"
+          echo "$BADGING" | grep -F "versionName='$VERSION_NAME'"
+          if echo "$BADGING" | grep -q '^application-debuggable'; then
+            echo "::error::Refusing to publish a debuggable APK"
+            exit 1
+          fi
+          unzip -l "$APK" | grep -F 'lib/arm64-v8a/libmain.so'
+
+          if $APKSIGNER verify --verbose "$APK"; then
+            CERT=$($APKSIGNER verify --print-certs "$APK" | \
+              awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')
+            if [ "$CERT" != "$EXPECTED_SIGNING_CERT_SHA256" ]; then
+              echo "::error::Signing certificate $CERT does not match the established update key"
+              exit 1
+            fi
+            echo "Verified established signing certificate: $CERT"
+          elif [ "$PUBLISH" = "true" ]; then
+            echo "::error::Published releases must be signed"
+            exit 1
+          else
+            echo "Unsigned release artifact accepted because publishing is disabled"
+          fi
+
+          mkdir -p release-artifacts
+          OUTPUT="release-artifacts/UnleashedRecomp_${VERSION_NAME}.apk"
+          cp "$APK" "$OUTPUT"
+          sha256sum "$OUTPUT"
+
+      - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UnleashedRecomp-Android-${{ github.ref_name }}
-          path: android-apk/app/build/outputs/apk/**/*.apk
+          name: UnleashedRecomp-Android-${{ steps.version.outputs.release_tag }}
+          path: release-artifacts/*.apk
           if-no-files-found: error
-      
-      - name: Get release tag
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
+          retention-days: 14
+
+  release:
+    name: Publish verified release
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out sources for release notes
+        uses: actions/checkout@v4
+
+      - name: Download verified APK
+        uses: actions/download-artifact@v4
+        with:
+          name: UnleashedRecomp-Android-${{ needs.build.outputs.release_tag }}
+          path: release-artifacts
+
+      - name: Create release as draft, upload, then publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          BASE_TAG=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty' | \
-            xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
-        
-          if [ -z "$BASE_TAG" ]; then
-            echo "::error::Could not get original version"
-            exit 1
-          fi
-        
-          TAG="$BASE_TAG"
-          N=2
-        
-          while gh release view "$TAG" >/dev/null 2>&1; do
-            TAG="${BASE_TAG}-${N}"
-            N=$((N + 1))
-          done
-        
-          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
-        
-          echo "Using release tag: $TAG"
-          
-      - name: Select random banner
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
-        run: |
-          BANNER=$(find patches/banners -type f \
-            \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) \
-            | shuf -n 1)
-        
-          if [ -z "$BANNER" ]; then
-            echo "::error::No banners found in extra/banners"
-            exit 1
-          fi
-        
-          echo "BANNER_PATH=$BANNER" >> "$GITHUB_ENV"
-          echo "BANNER_NAME=$(basename "$BANNER")" >> "$GITHUB_ENV"
-      
-      - name: Create Release if needed
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          RELEASE_TAG: ${{ needs.build.outputs.release_tag }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'release' }}
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
-          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
-          BANNER_PATH: ${{ env.BANNER_PATH }}
-          BANNER_NAME: ${{ env.BANNER_NAME }}
         run: |
-          PARENT_REPO=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty')
-          REPOSITORY_URL="https://github.com/$PARENT_REPO"
-          
-          NOTES="![BANNER_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH})
-          
-          Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
-            
-          RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
-          
-          if [ -n "$RELEASE_NOTES" ]; then
-            NOTES="$NOTES
-        
-            User notes:
-            $RELEASE_NOTES"
-          fi
-        
-          FLAGS=""
-
-          if [ "$RELEASE_TYPE" = "prerelease" ]; then
-            FLAGS="--prerelease"
-          fi
-        
-          gh release create "$RELEASE_TAG" \
-            --title "$RELEASE_TAG" \
-            --notes "$NOTES" \
-            $FLAGS
-
-      - name: Upload APK to Release
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ env.RELEASE_TAG }}
-        run: |
-          APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
-        
+          set -euo pipefail
+          APK=$(find release-artifacts -maxdepth 1 -type f -name '*.apk' | head -n 1)
           if [ -z "$APK" ]; then
-            echo "::error::APK not found"
+            echo "::error::Verified APK artifact not found"
             exit 1
           fi
-          
-          NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
-          
-          cp "$APK" "$NEW_NAME"
-        
-          gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_TAG already exists"
+            exit 1
+          fi
+
+          NOTES="Verified non-debuggable Android release for ${RELEASE_TAG}."
+          if [ "$RELEASE_TAG" = "v0.5.2-3" ]; then
+            NOTES="$NOTES
+
+          Migration note: v0.5.2-2 checked the upstream update channel. Install this release manually once; later fork releases will be detected in-app."
+          fi
+          PARENT_REPO=$(gh api repos/${GITHUB_REPOSITORY} --jq '.parent.full_name // empty')
+          if [ -n "$PARENT_REPO" ]; then
+            BASE_TAG=$(gh api repos/${PARENT_REPO}/releases/latest --jq '.tag_name // empty' 2>/dev/null || true)
+            if [ -n "$BASE_TAG" ]; then
+              NOTES="$NOTES
+
+          Based on: https://github.com/${PARENT_REPO}/releases/tag/${BASE_TAG}"
+            fi
+          fi
+
+          mapfile -t BANNERS < <(find patches/banners -type f \
+            \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) | sort)
+          if [ "${#BANNERS[@]}" -gt 0 ]; then
+            INDEX=$((16#${GITHUB_SHA:0:8} % ${#BANNERS[@]}))
+            BANNER_PATH=${BANNERS[$INDEX]}
+            BANNER_NAME=$(basename "$BANNER_PATH")
+            NOTES="![${BANNER_NAME}](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/${BANNER_PATH})
+
+          ${NOTES}"
+          fi
+          if [ -n "${RELEASE_NOTES:-}" ]; then
+            NOTES="$NOTES
+
+          ${RELEASE_NOTES}"
+          fi
+
+          ARGS=("$RELEASE_TAG" "$APK" --draft --title "$RELEASE_TAG" --notes "$NOTES")
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            ARGS+=(--verify-tag)
+          else
+            ARGS+=(--target "$GITHUB_SHA")
+          fi
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            ARGS+=(--prerelease)
+          fi
+
+          gh release create "${ARGS[@]}"
+          gh release edit "$RELEASE_TAG" --draft=false

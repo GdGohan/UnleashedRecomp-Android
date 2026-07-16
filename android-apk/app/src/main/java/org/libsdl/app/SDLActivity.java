@@ -53,7 +53,6 @@ import android.widget.Toast;
 import java.util.Hashtable;
 import java.util.Locale;
 
-
 /**
     SDL Activity
 */
@@ -320,6 +319,8 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         Log.v(TAG, "Model: " + Build.MODEL);
         Log.v(TAG, "onCreate()");
         super.onCreate(savedInstanceState);
+
+        enableDisplayCutout();
 
         try {
             Thread.currentThread().setName("SDLActivity");
@@ -1875,6 +1876,17 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         }
         return 0;
     }
+
+    private void enableDisplayCutout() {
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams lp =
+                    getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(lp);
+        }
+    }
+
 }
 
 /**
