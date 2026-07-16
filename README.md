@@ -217,3 +217,5 @@ This port exists because many people shared code, testing time, traces, hardware
 - [Vauzi-17/710](https://github.com/Vauzi-17/710) and whitebelyash/AdrenoToolsDrivers — community Adreno 710/720/722 device information
 - Anthropic's Claude (Fable 5) — AI pair programming across the port: code, crash analysis, and reverse engineering under maintainer guidance
 - Everyone who tested unfinished builds, captured logs, reproduced GPU bugs, and reported what happened
+
+<img width="470" height="353" alt="090227_sound05" src="https://github.com/user-attachments/assets/c8e59650-3bd4-4c36-be4c-8887cb54a97b" />
