@@ -287,15 +287,17 @@ jobs:
           (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
         run: |
           pip3 install pillow
-          python3 patches/draw_banner.py \
+          OUTPUT_PATHS=$(python3 patches/draw_banner.py \
             --image "patches/images/bg-releases.png" \
             --font "patches/FOT-Seurat Pro M.otf" \
             --title "                              ${{ env.RELEASE_TAG }}" \
             --notes "${{ github.event.inputs.release_notes }}" \
-            --output "patches/images/bg-final.png"
-
-          echo "NOTES_IMAGE_PATH=patches/images/bg-final.png" >> "$GITHUB_ENV"
-          echo "NOTES_IMAGE_NAME=bg-final.png" >> "$GITHUB_ENV"
+            --output "patches/images/bg-final.png")
+          echo "NOTES_IMAGE_PATHS<<EOF" >> "$GITHUB_ENV"
+          echo "$OUTPUT_PATHS" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+          echo "NOTES_IMAGE_PATH=$(echo "$OUTPUT_PATHS" | head -n1)" >> "$GITHUB_ENV"
+          echo "NOTES_IMAGE_NAME=$(basename "$(echo "$OUTPUT_PATHS" | head -n1)")" >> "$GITHUB_ENV"
 
       # NOTE: bg-final.png is generated at runtime and only exists on the runner.
       # For the raw.githubusercontent.com link below to work, this step must commit
@@ -303,13 +305,18 @@ jobs:
       # don't want to commit generated images, upload bg-final.png as a release asset
       # instead and link to that asset URL rather than raw.githubusercontent.com.
       - name: Commit generated notes image
+        env:
+          NOTES_IMAGE_PATHS: ${{ env.NOTES_IMAGE_PATHS }}
         if: |
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')) &&
           (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add patches/images/bg-final.png
+          while IFS= read -r img; do
+            [ -n "$img" ] && git add "$img"
+          done <<< "$NOTES_IMAGE_PATHS"
+          git add -A -- patches/images/bg-final*.png
           git diff --cached --quiet || git commit -m "chore: update release notes image [skip ci]"
           git push
 
@@ -324,8 +331,7 @@ jobs:
           USE_BANNER_IMAGE: ${{ github.event_name == 'push' && 'true' || github.event.inputs.use_banner_image }}
           BANNER_PATH: ${{ env.BANNER_PATH }}
           BANNER_NAME: ${{ env.BANNER_NAME }}
-          NOTES_IMAGE_PATH: ${{ env.NOTES_IMAGE_PATH }}
-          NOTES_IMAGE_NAME: ${{ env.NOTES_IMAGE_NAME }}
+          NOTES_IMAGE_PATHS: ${{ env.NOTES_IMAGE_PATHS }}
         run: |
           PARENT_REPO=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty')
           REPOSITORY_URL="https://github.com/$PARENT_REPO"
@@ -343,17 +349,18 @@ jobs:
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
-          if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATH" ]; then
-            # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
-            NOTES="$NOTES
-
-            <p align="center">
-            <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH}\" alt=\"$NOTES_IMAGE_NAME\">
-            </p>"
+          if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATHS" ]; then
+            # uma <img> por pagina, na ordem em que foram geradas
+            while IFS= read -r img; do
+              [ -z "$img" ] && continue
+              IMG_NAME=$(basename "$img")
+              NOTES="$NOTES
+              <p align="center">
+              <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${img}\" alt=\"$IMG_NAME\">
+              </p>"
+            done <<< "$NOTES_IMAGE_PATHS"
           elif [ -n "$RELEASE_NOTES" ]; then
-            # Notes as plain text.
             NOTES="$NOTES
-
             User notes:
             $RELEASE_NOTES"
           fi
