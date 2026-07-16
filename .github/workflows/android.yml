@@ -67,6 +67,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check out game files (private repo)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.GAME_FILES_REPO }}
