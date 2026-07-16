@@ -249,17 +249,9 @@ jobs:
             exit 1
           fi
 
-          TAG="$BASE_TAG"
-          N=2
+          echo "RELEASE_TAG=$BASE_TAG" >> "$GITHUB_ENV"
 
-          while gh release view "$TAG" >/dev/null 2>&1; do
-            TAG="${BASE_TAG}-${N}"
-            N=$((N + 1))
-          done
-
-          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
-
-          echo "Using release tag: $TAG"
+          echo "Using release tag: $BASE_TAG"
 
       - name: Select random banner
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
@@ -332,6 +324,11 @@ jobs:
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
           </p>"
 
+          NOTES="$NOTES
+
+          Release based on:
+          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
+
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
           if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATH" ]; then
@@ -349,10 +346,7 @@ jobs:
             $RELEASE_NOTES"
           fi
 
-          NOTES="Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG
-          
-          $NOTES"
+          NOTES="$NOTES"
 
           FLAGS=""
 
@@ -366,24 +360,25 @@ jobs:
             $FLAGS
 
       - name: Upload APK to Release
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none' && github.event.inputs.compile_apk)
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
-          COMPILE_APK: ${{ github.event_name == 'push' && 'true' || github.event.inputs.compile_apk }}
         run: |
-          if [ "$COMPILE_APK" = "true" ]; then
-            APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
-            if [ -z "$APK" ]; then
-              echo "::error::APK not found"
-              exit 1
-            fi
-            NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
-
-            cp "$APK" "$NEW_NAME"
-
-            gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
-          else 
-            gh release view "$RELEASE_TAG"
-            echo "compile_apk=false, skipping APK upload."
+          APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
+          if [ -z "$APK" ]; then
+            echo "::error::APK not found"
+            exit 1
           fi
+
+          N=2
+          while gh release view "$RELEASE_TAG" >/dev/null 2>&1; do
+            RELEASE_TAG="${RELEASE_TAG}-${N}"
+            N=$((N + 1))
+          done
+        
+          NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
+
+          cp "$APK" "$NEW_NAME"
+
+          gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
