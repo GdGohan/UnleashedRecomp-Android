@@ -34,11 +34,16 @@ on:
           - none
           - release
           - prerelease
+      use_banner_image:
+        description: "Include banner image in release notes"
+        type: boolean
+        required: true
+        default: true
   push:
     tags: ["v*"]
-    
+
   pull_request:
-    
+
 concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
@@ -109,7 +114,7 @@ jobs:
           cd tools/XenosRecomp/thirdparty/zstd
           unzip -o build.zip
           cd -
-    
+
       - name: Build host tools
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
@@ -160,7 +165,7 @@ jobs:
       - name: Fix dxc permissions
         run: |
           chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
-    
+
       - name: Build native libraries
         run: |
           cmake --build out/build/android-arm64 \
@@ -208,7 +213,7 @@ jobs:
           name: UnleashedRecomp-Android-${{ github.ref_name }}
           path: android-apk/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-      
+
       - name: Get release tag
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
@@ -216,39 +221,73 @@ jobs:
         run: |
           BASE_TAG=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty' | \
             xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
-        
+
           if [ -z "$BASE_TAG" ]; then
             echo "::error::Could not get original version"
             exit 1
           fi
-        
+
           TAG="$BASE_TAG"
           N=2
-        
+
           while gh release view "$TAG" >/dev/null 2>&1; do
             TAG="${BASE_TAG}-${N}"
             N=$((N + 1))
           done
-        
+
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
-        
+
           echo "Using release tag: $TAG"
-          
+
       - name: Select random banner
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         run: |
           BANNER=$(find patches/banners -type f \
             \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) \
             | shuf -n 1)
-        
+
           if [ -z "$BANNER" ]; then
             echo "::error::No banners found in extra/banners"
             exit 1
           fi
-        
+
           echo "BANNER_PATH=$BANNER" >> "$GITHUB_ENV"
           echo "BANNER_NAME=$(basename "$BANNER")" >> "$GITHUB_ENV"
-      
+
+      # Renders the release title + notes as an image (used below the top banner
+      # in the release body when USE_BANNER_IMAGE is true). Independent from
+      # "Select random banner" above.
+      - name: Draw release notes image
+        if: |
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')) &&
+          (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
+        run: |
+          python3 patches/draw_banner.py \
+            --image "patches/images/bg-releases.png" \
+            --font "patches/FOT-Seurat Pro M.otf" \
+            --title "                              ${{ env.RELEASE_TAG }}" \
+            --notes "${{ github.event.inputs.release_notes }}" \
+            --output "patches/images/bg-final.png"
+
+          echo "NOTES_IMAGE_PATH=patches/images/bg-final.png" >> "$GITHUB_ENV"
+          echo "NOTES_IMAGE_NAME=bg-final.png" >> "$GITHUB_ENV"
+
+      # NOTE: bg-final.png is generated at runtime and only exists on the runner.
+      # For the raw.githubusercontent.com link below to work, this step must commit
+      # and push it back to the repo before "Create Release if needed" runs. If you
+      # don't want to commit generated images, upload bg-final.png as a release asset
+      # instead and link to that asset URL rather than raw.githubusercontent.com.
+      - name: Commit generated notes image
+        if: |
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')) &&
+          (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add patches/images/bg-final.png
+          git diff --cached --quiet || git commit -m "chore: update release notes image [skip ci]"
+          git push
+
       - name: Create Release if needed
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         env:
@@ -256,32 +295,44 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          USE_BANNER_IMAGE: ${{ github.event_name == 'push' && 'true' || github.event.inputs.use_banner_image }}
           BANNER_PATH: ${{ env.BANNER_PATH }}
           BANNER_NAME: ${{ env.BANNER_NAME }}
+          NOTES_IMAGE_PATH: ${{ env.NOTES_IMAGE_PATH }}
+          NOTES_IMAGE_NAME: ${{ env.NOTES_IMAGE_NAME }}
         run: |
           PARENT_REPO=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty')
           REPOSITORY_URL="https://github.com/$PARENT_REPO"
-          
-          NOTES="![BANNER_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH})
-          
-          Release based on:
-          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
-            
+
+          # Top banner: always shown, unrelated to the notes toggle.
+          NOTES="![$BANNER_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH})"
+
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
-          
-          if [ -n "$RELEASE_NOTES" ]; then
+
+          if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATH" ]; then
+            # Notes as image: title + notes already drawn into NOTES_IMAGE_PATH.
             NOTES="$NOTES
-        
+
+          ![$NOTES_IMAGE_NAME](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${NOTES_IMAGE_PATH})"
+          elif [ -n "$RELEASE_NOTES" ]; then
+            # Notes as plain text.
+            NOTES="$NOTES
+
             User notes:
             $RELEASE_NOTES"
           fi
-        
+
+          NOTES="$NOTES
+
+          Release based on:
+          $REPOSITORY_URL/releases/tag/$RELEASE_TAG"
+
           FLAGS=""
 
           if [ "$RELEASE_TYPE" = "prerelease" ]; then
             FLAGS="--prerelease"
           fi
-        
+
           gh release create "$RELEASE_TAG" \
             --title "$RELEASE_TAG" \
             --notes "$NOTES" \
@@ -294,14 +345,14 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
-        
+
           if [ -z "$APK" ]; then
             echo "::error::APK not found"
             exit 1
           fi
-          
+
           NEW_NAME="UnleashedRecomp-${RELEASE_TAG}.apk"
-          
+
           cp "$APK" "$NEW_NAME"
-        
+
           gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
