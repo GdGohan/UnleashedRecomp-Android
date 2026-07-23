@@ -37,10 +37,8 @@
         }
 
         #flashcontent {
-			width: 900px;
-            height: 612px;
-            max-width: 100vw;
-            max-height: 100vh;
+            width: 100vw;
+            height: 100vh;
 			display: flex;
 			justify-content: center;
 			align-items: center;
@@ -49,10 +47,8 @@
 
         ruffle-player {
             display: block;
-            width: 900px;
-            height: 612px;
-            max-width: 100vw;
-            max-height: 100vh;
+            width: 100vw;
+            height: 100vh;
         }
     </style>
 </head>
@@ -63,12 +59,23 @@
 
     <script>
         var bgcolor = "#050a0f";
+        
+        const sw = 900;
+        const sh = 612;
+        
+        const scale = Math.min(
+            window.innerWidth / sw,
+            window.innerHeight / sh
+        );
+        
+        const w = sw * scale;
+        const h = sh * scale;
 
         var so = new SWFObject(
             "preloader.swf",
             "external_flashcontent",
-            "100%",
-            "100%",
+            w,
+            h,
             "9",
             bgcolor
         );
