@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="http://ns.adobe.com/air/application/51.0"> <!-- or 33.1-->
+
+    <id>appid</id>
+    <versionNumber>1.0.0</versionNumber>
+    <filename>App</filename>
+    <name>App</name>
+
+    <initialWindow>
+        <content>preloader.swf</content>
+        <renderMode>direct</renderMode>
+        <visible>true</visible>
+        <aspectRatio>landscape</aspectRatio> <!-- or landscape|16:9 -->
+        <autoOrients>true</autoOrients>
+        <fullScreen>true</fullScreen>
+    </initialWindow>
+</application>
