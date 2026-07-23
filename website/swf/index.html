@@ -44,6 +44,15 @@
 			align-items: center;
             overflow: hidden;
 		}
+		
+		#viewport {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 900px;
+            height: 612px;
+            transform-origin: center center;
+        }
 
         ruffle-player {
             display: block;
@@ -63,19 +72,26 @@
         const sw = 900;
         const sh = 612;
         
-        const scale = Math.min(
-            window.innerWidth / sw,
-            window.innerHeight / sh
-        );
+        function resize() {
+            const scale = Math.min(
+                window.innerWidth / sw,
+                window.innerHeight / sh
+            );
         
-        const w = sw * scale;
-        const h = sh * scale;
+            const vp = document.getElementById("viewport");
+        
+            vp.style.transform =
+                `translate(-50%, -50%) scale(${scale})`;
+        }
+        
+        window.addEventListener("resize", resize);
+        resize();
 
         var so = new SWFObject(
             "preloader.swf",
             "external_flashcontent",
-            900,
-            612,
+            sw,
+            sh,
             "9",
             bgcolor
         );
