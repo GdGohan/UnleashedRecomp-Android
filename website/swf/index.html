@@ -19,9 +19,7 @@
 		window.RufflePlayer.config = {
 			renderer: "webgl",
 			letterbox: "on",
-            scale: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-               ? "exactFit"
-               : "showAll",
+            scale: "showAll",
 			quality: "best"
 		};
 	</script>
@@ -44,12 +42,15 @@
 			display: flex;
 			justify-content: center;
 			align-items: center;
+            overflow: hidden;
 		}
 
         ruffle-player {
             display: block;
-            width: 100%;
-            height: 100%;
+            width: 900px;
+            height: 612px;
+            max-width: 100vw;
+            max-height: 100vh;
         }
     </style>
 </head>
