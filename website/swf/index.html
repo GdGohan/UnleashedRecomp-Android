@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        
     <title>SEGA | ソニック ワールドアドベンチャー</title>
 
     <link rel="shortcut icon" href="favicon.ico">
@@ -19,7 +19,9 @@
 		window.RufflePlayer.config = {
 			renderer: "webgl",
 			letterbox: "on",
-			scale: "showAll",
+            scale: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+               ? "exactFit"
+               : "showAll",
 			quality: "best"
 		};
 	</script>
@@ -37,8 +39,8 @@
         }
 
         #flashcontent {
-			width: 100%;
-			height: 100%;
+			width: 100vw;
+			height: 100vh;
 			display: flex;
 			justify-content: center;
 			align-items: center;
