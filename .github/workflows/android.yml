@@ -65,6 +65,13 @@ jobs:
     steps:
       - name: Check out sources
         uses: actions/checkout@v4
+        
+      - name: Check out patches
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: patches
+          path: patches-repo
 
       - name: Check out game files (private repo)
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -208,7 +215,7 @@ jobs:
       - name: Apply custom Android changes
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
-          python3 patches/patcher.py
+          python3 patches-repo/patcher.py
 
       - name: Build APK
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -266,7 +273,7 @@ jobs:
       - name: Select random banner
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')
         run: |
-          BANNER=$(find patches/banners -type f \
+          BANNER=$(find patches-repo/banners -type f \
             \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) \
             | shuf -n 1)
 
@@ -287,12 +294,12 @@ jobs:
           (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
         run: |
           pip3 install pillow
-          OUTPUT_PATHS=$(python3 patches/draw_banner.py \
-            --image "patches/images/bg-releases.png" \
-            --font "patches/FOT-Seurat Pro M.otf" \
+          OUTPUT_PATHS=$(python3 patches-repo/draw_banner.py \
+            --image "patches-repo/images/bg-releases.png" \
+            --font "patches-repo/FOT-Seurat Pro M.otf" \
             --title "                              ${{ env.RELEASE_TAG }}" \
             --notes "${{ github.event.inputs.release_notes }}" \
-            --output "patches/images/bg-final.png")
+            --output "patches-repo/images/bg-final.png")
           echo "NOTES_IMAGE_PATHS<<EOF" >> "$GITHUB_ENV"
           echo "$OUTPUT_PATHS" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
