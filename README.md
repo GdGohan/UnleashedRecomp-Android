@@ -2,7 +2,7 @@
 
 <img width="640" height="360" alt="715 Sem Título_20260710122452" src="https://github.com/user-attachments/assets/00fa9b4a-4761-4cad-9ecb-060a5bec815d" />
 
-[Promotional Page](https://gdgohan.github.io/UnleashedRecomp-Android/swf)
+[Promotional Page](https://gdgohan.github.io/UnleashedRecomp-Android/website/swf)
 
 Play the Xbox 360 version of *Sonic Unleashed* natively on a supported Android device.
 
