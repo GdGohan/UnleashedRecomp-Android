@@ -58,16 +58,18 @@ SWFForceSize.prototype = {
 	},
 	
 	onResizeDiv: function()
-	{
-		var winSize = this.getWinSize();
-		var w = winSize.width < this.minW? this.minW+"px" : "100%";
-		var h = winSize.height < this.minH? this.minH+"px" : "100%";
-		/*
-		 for IE on PC, turn off the disabled scrollbar 
-		 on the right when there's no content to scroll
-		*/
-		if( document.all ) document.body.scroll = ( w!="100%" || h!="100%" )? "auto" : "no";
-		document.getElementById( this.div ).style.width = w;
-		document.getElementById( this.div ).style.height = h;
-	}
+{
+    var winSize = this.getWinSize();
+
+    var scale = Math.min(
+        winSize.width / this.minW,
+        winSize.height / this.minH
+    );
+
+    document.getElementById(this.div).style.width =
+        (this.minW * scale) + "px";
+
+    document.getElementById(this.div).style.height =
+        (this.minH * scale) + "px";
+}
 }
