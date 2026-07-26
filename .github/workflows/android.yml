@@ -112,8 +112,7 @@ jobs:
           path: game-files
 
       - name: Stage game files
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           install -m 644 \
             game-files/default.xex \
@@ -124,38 +123,33 @@ jobs:
           rm -rf game-files
 
       - name: Install build dependencies
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build ccache clang
 
       - name: Set up JDK 17
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Install Android NDK
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "ndk;$NDK_VERSION" >/dev/null
 
       - name: Set up vcpkg
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           git clone https://github.com/microsoft/vcpkg thirdparty/vcpkg
           git -C thirdparty/vcpkg checkout "$VCPKG_COMMIT"
           thirdparty/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Cache vcpkg binary archives
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
@@ -164,20 +158,23 @@ jobs:
             vcpkg-${{ runner.os }}-
 
       - name: Set up ccache
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: android-arm64
           max-size: 3G
 
       - name: Extract zstd build
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           cd tools/XenosRecomp/thirdparty/zstd
           unzip -o build.zip
           cd -
+      
+      - name: Apply custom Android changes and Patches
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
+        run: |
+          python3 patches-repo/patcher.py
 
       - name: Build host tools
         if: |
@@ -213,8 +210,7 @@ jobs:
           done
 
       - name: Configure Android build
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
         run: |
@@ -239,17 +235,10 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Fix dxc permissions
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
-          
-      - name: Apply custom Android changes and Patches
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-            github.event.inputs.code_mode == 'export'
-        run: |
-          python3 patches-repo/patcher.py
-          
+ 
       - name: Generate native sources
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
