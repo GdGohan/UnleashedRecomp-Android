@@ -38,7 +38,7 @@ on:
           - import
 
       code_zip:
-        description: "(Unfinished) URL of ZIP file to import (required only for import mode)"
+        description: "URL of ZIP file to import (required only for import mode)"
         required: false
         default: ""
 
