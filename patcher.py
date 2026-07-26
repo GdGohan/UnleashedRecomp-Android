@@ -11,6 +11,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
+CMAKE_FILE = ROOT / "UnleashedRecompLib/CMakeLists.txt"
+
 PACKAGE = "com.sega.sonicunr"
 
 PACKAGE2 = "org.libsdl.app"
@@ -29,6 +31,51 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.view.WindowManager;
 """
+
+def patch_cmake_generation_target():
+
+    if not CMAKE_FILE.exists():
+        print("CMakeLists.txt não encontrado:", CMAKE_FILE)
+        return
+
+    text = CMAKE_FILE.read_text()
+
+    TARGET_NAME = "UnleashedRecompGenerate"
+
+    # Evita aplicar o patch mais de uma vez
+    if f"add_custom_target({TARGET_NAME}" in text:
+        print("Target de geração já configurado:", TARGET_NAME)
+        return
+
+    GENERATION_TARGET = r'''
+    # Generates all native C/C++ sources required by the native build.
+    # This target is intentionally separated from the compilation targets.
+    add_custom_target(UnleashedRecompGenerate
+        DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/private/default_patched.xex"
+            ${UNLEASHED_RECOMP_PPC_RECOMPILED_SOURCES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/private/shader_decompressed.ar"
+            "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader_cache.cpp"
+    )
+    
+'''
+
+    # Insere antes da criação da biblioteca
+    MARKER = "add_library(UnleashedRecompLib"
+
+    if MARKER not in text:
+        print("Marker not found in CMakeLists.txt:", MARKER)
+        return
+
+    text = text.replace(
+        MARKER,
+        GENERATION_TARGET + MARKER,
+        1
+    )
+
+    CMAKE_FILE.write_text(text)
+
+    print("Generation target added:", TARGET_NAME)
 
 def copy_tree(src: Path, dst: Path):
     if not src.exists():
@@ -675,5 +722,8 @@ if __name__ == "__main__":
 
     patch_launcher()
     print("Updated LauncherActivity")
+
+    patch_cmake_generation_target()
+    print("Updated CMakeLists.txt")
 
     print("Completed")
