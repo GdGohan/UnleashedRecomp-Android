@@ -38,7 +38,7 @@ on:
           - import
 
       code_zip:
-        description: "URL of ZIP file to import (required only for import mode)"
+        description: "(Unfinished) URL of ZIP file to import (required only for import mode)"
         required: false
         default: ""
 
@@ -220,30 +220,6 @@ jobs:
 
           unzip -o /tmp/generated-code.zip -d "$GENERATED_CODE_DIR"
 
-      - name: Export generated code ZIP
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.code_mode == 'export'
-        run: |
-          if [ ! -d "$GENERATED_CODE_DIR" ]; then
-            echo "::error::Generated code directory not found: $GENERATED_CODE_DIR"
-            exit 1
-          fi
-
-          cd "$GENERATED_CODE_DIR"
-          zip -r "$GITHUB_WORKSPACE/generated-code.zip" .
-          cd -
-
-      - name: Upload generated code ZIP
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.code_mode == 'export'
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-code
-          path: generated-code.zip
-          if-no-files-found: error
-
       - name: Configure Android build
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         env:
@@ -275,7 +251,7 @@ jobs:
           chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
 
       - name: Build native libraries
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           cmake --build out/build/android-arm64 \
             --target UnleashedRecomp \
@@ -283,6 +259,30 @@ jobs:
             file_redirect_hook \
             gsl_alloc_hook \
             hook_impl
+      
+      - name: Export generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'export'
+        run: |
+          if [ ! -d "$GENERATED_CODE_DIR" ]; then
+            echo "::error::Generated code directory not found: $GENERATED_CODE_DIR"
+            exit 1
+          fi
+
+          cd "$GENERATED_CODE_DIR"
+          zip -r "$GITHUB_WORKSPACE/generated-code.zip" .
+          cd -
+
+      - name: Upload generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'export'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-code
+          path: generated-code.zip
+          if-no-files-found: error
 
       - name: Stage jniLibs
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
