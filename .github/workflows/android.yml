@@ -165,7 +165,7 @@ jobs:
           max-size: 3G
 
       - name: Extract zstd build
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           cd tools/XenosRecomp/thirdparty/zstd
           unzip -o build.zip
