@@ -241,8 +241,10 @@ jobs:
       - name: Generate native sources
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
-          cmake --build out/build/android-arm64 \
-            --target UnleashedRecompGenerate
+          cmake --build out/build/android-arm64 --target UnleashedRecompGenerate
+            
+          echo "Generated Files:"
+          find "$GENERATED_CODE_DIR" -maxdepth 2 -type f -print
       
       - name: Import generated code ZIP
         if: |
@@ -273,7 +275,7 @@ jobs:
           fi
 
           cd "$GENERATED_CODE_DIR"
-          zip -r "$GITHUB_WORKSPACE/generated-code.zip" .
+          zip -r "$GITHUB_WORKSPACE/generated-code-export.zip" .
           cd -
       
       - name: Upload generated code ZIP
@@ -283,7 +285,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-code
-          path: generated-code.zip
+          path: generated-code-export.zip
           if-no-files-found: error
 
       - name: Build native libraries
