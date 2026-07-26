@@ -38,7 +38,7 @@ on:
           - import
 
       code_zip:
-        description: "ZIP file to import (required only for import mode)"
+        description: "URL of ZIP file to import (required only for import mode)"
         required: false
         default: ""
 
@@ -207,15 +207,18 @@ jobs:
           github.event_name == 'workflow_dispatch' &&
           github.event.inputs.code_mode == 'import'
         run: |
-          if [ -z "${{ github.event.inputs.code_zip }}" ]; then
+          CODE_ZIP="${{ github.event.inputs.code_zip }}"
+          
+          if [ -z "$CODE_ZIP" ]; then
             echo "::error::code_zip is required when code_mode is import"
             exit 1
           fi
 
           mkdir -p "$GENERATED_CODE_DIR"
+          
+          curl -fL "$CODE_ZIP" -o /tmp/generated-code.zip
 
-          unzip -o "${{ github.event.inputs.code_zip }}" \
-            -d "$GENERATED_CODE_DIR"
+          unzip -o /tmp/generated-code.zip -d "$GENERATED_CODE_DIR"
 
       - name: Export generated code ZIP
         if: |
