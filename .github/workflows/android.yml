@@ -103,8 +103,7 @@ jobs:
           path: patches-repo
 
       - name: Check out game files (private repo)
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' ||
-           github.event.inputs.code_mode == 'export'
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.GAME_FILES_REPO }}
