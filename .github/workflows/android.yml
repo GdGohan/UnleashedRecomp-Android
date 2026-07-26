@@ -2,8 +2,8 @@
 #
 # Game-derived inputs (default.xex, default.xexp, shader.ar) cannot live in this
 # public repository. They are fetched from a private repository configured via:
-#   - repository VARIABLE `GAME_FILES_REPO`  - e.g. "SansNope/UnleashedRecomp-GameFiles"
-#   - repository SECRET  `GAME_FILES_TOKEN`  - fine-grained PAT with read-only
+#   - repository VARIABLE `GAME_FILES_REPO`
+#   - repository SECRET `GAME_FILES_TOKEN`
 #     Contents access to that single repository
 # The private repository must contain default.xex, default.xexp and shader.ar
 # at its root. See docs/ci.md for details.
@@ -13,6 +13,12 @@
 #   - secret `ANDROID_KEYSTORE_PASSWORD`
 #   - secret `ANDROID_KEY_ALIAS`
 #   - secret `ANDROID_KEY_PASSWORD`
+#
+# Code modes:
+#   normal -> normal build flow
+#   export -> export generated code as ZIP
+#   import -> import ZIP and replace generated codes
+
 name: Android Build
 
 permissions:
@@ -21,10 +27,26 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      code_mode:
+        description: "Code mode"
+        type: choice
+        required: true
+        default: normal
+        options:
+          - normal
+          - export
+          - import
+
+      code_zip:
+        description: "ZIP file to import (required only for import mode)"
+        required: false
+        default: ""
+
       release_notes:
         description: "Additional release notes"
         required: false
         default: ""
+
       release_type:
         description: "Publish mode"
         type: choice
@@ -34,16 +56,19 @@ on:
           - none
           - release
           - prerelease
+
       use_banner_image:
         description: "Include banner image in release notes"
         type: boolean
         required: true
         default: true
+
       compile_apk:
         description: "Compile the APK"
         type: boolean
         required: true
         default: true
+
   push:
     tags: ["v*"]
 
@@ -55,17 +80,21 @@ concurrency:
 
 env:
   NDK_VERSION: "29.0.14206865"
+
   # Must match "builtin-baseline" in vcpkg.json.
   VCPKG_COMMIT: b322364f06308bdd24823f9d8f03fe0cc86fd46f
+
+  GENERATED_CODE_DIR: "UnleashedRecompLib/ppc"
 
 jobs:
   build:
     name: Build APK (arm64-v8a)
     runs-on: ubuntu-24.04
+
     steps:
       - name: Check out sources
         uses: actions/checkout@v4
-        
+
       - name: Check out patches
         uses: actions/checkout@v4
         with:
@@ -84,7 +113,12 @@ jobs:
       - name: Stage game files
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
-          install -m 644 game-files/default.xex game-files/default.xexp game-files/shader.ar UnleashedRecompLib/private/
+          install -m 644 \
+            game-files/default.xex \
+            game-files/default.xexp \
+            game-files/shader.ar \
+            UnleashedRecompLib/private/
+
           rm -rf game-files
 
       - name: Install build dependencies
@@ -102,7 +136,9 @@ jobs:
 
       - name: Install Android NDK
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" >/dev/null
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;$NDK_VERSION" >/dev/null
 
       - name: Set up vcpkg
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -117,7 +153,8 @@ jobs:
         with:
           path: ~/.cache/vcpkg/archives
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: vcpkg-${{ runner.os }}-
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
 
       - name: Set up ccache
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -126,9 +163,6 @@ jobs:
           key: android-arm64
           max-size: 3G
 
-      # Code-generation tools must run on the build host, so they are built in a
-      # separate native pass and handed to the cross build as prebuilt binaries
-      # (mirrors build_host_tools.bat + build_android_configure.bat on Windows).
       - name: Extract zstd build
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
@@ -137,7 +171,9 @@ jobs:
           cd -
 
       - name: Build host tools
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
+        if: |
+          (github.event_name != 'workflow_dispatch' ||
+           github.event.inputs.compile_apk != 'false')
         env:
           VCPKG_ROOT: ${{ github.workspace }}/thirdparty/vcpkg
           CC: clang
@@ -150,16 +186,60 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          cmake --build out/build/host-tools --target XenonRecomp XenosRecomp file_to_c x_decompress
+
+          cmake --build out/build/host-tools \
+            --target XenonRecomp XenosRecomp file_to_c x_decompress
+
           for tool in XenonRecomp XenosRecomp file_to_c x_decompress; do
             path=$(find out/build/host-tools -type f -name "$tool" | head -n 1)
+
             if [ -z "$path" ]; then
               echo "::error::Host tool $tool was not produced"
               exit 1
             fi
+
             var=$(echo "$tool" | tr '[:lower:]' '[:upper:]' | tr -d '_')
             echo "HOST_$var=$GITHUB_WORKSPACE/$path" >> "$GITHUB_ENV"
           done
+
+      - name: Import generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'import'
+        run: |
+          if [ -z "${{ github.event.inputs.code_zip }}" ]; then
+            echo "::error::code_zip is required when code_mode is import"
+            exit 1
+          fi
+
+          mkdir -p "$GENERATED_CODE_DIR"
+
+          unzip -o "${{ github.event.inputs.code_zip }}" \
+            -d "$GENERATED_CODE_DIR"
+
+      - name: Export generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'export'
+        run: |
+          if [ ! -d "$GENERATED_CODE_DIR" ]; then
+            echo "::error::Generated code directory not found: $GENERATED_CODE_DIR"
+            exit 1
+          fi
+
+          cd "$GENERATED_CODE_DIR"
+          zip -r "$GITHUB_WORKSPACE/generated-code.zip" .
+          cd -
+
+      - name: Upload generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'export'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-code
+          path: generated-code.zip
+          if-no-files-found: error
 
       - name: Configure Android build
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -168,6 +248,7 @@ jobs:
         run: |
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+
           cmake -S . -B out/build/android-arm64 -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE=thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET=arm64-android \
@@ -194,22 +275,36 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           cmake --build out/build/android-arm64 \
-            --target UnleashedRecomp main_hook file_redirect_hook gsl_alloc_hook hook_impl
+            --target UnleashedRecomp \
+            main_hook \
+            file_redirect_hook \
+            gsl_alloc_hook \
+            hook_impl
 
       - name: Stage jniLibs
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           dest=android-apk/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$dest"
+
           cp out/build/android-arm64/UnleashedRecomp/libmain.so "$dest/"
-          for lib in libmain_hook.so libfile_redirect_hook.so libgsl_alloc_hook.so libhook_impl.so; do
+
+          for lib in \
+            libmain_hook.so \
+            libfile_redirect_hook.so \
+            libgsl_alloc_hook.so \
+            libhook_impl.so; do
+
             path=$(find out/build/android-arm64 -name "$lib" | head -n 1)
+
             if [ -z "$path" ]; then
               echo "::error::adrenotools hook library $lib was not produced"
               exit 1
             fi
+
             cp "$path" "$dest/"
           done
+
           ls -la "$dest"
 
       - name: Apply custom Android changes
@@ -227,9 +322,13 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
+
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" |
+              base64 -d > "$RUNNER_TEMP/keystore.jks"
+
             export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/keystore.jks"
+
             ./gradlew --no-daemon assembleDebug
           else
             ./gradlew --no-daemon assembleDebug
@@ -248,8 +347,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BASE_TAG=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty' | \
-            xargs -I{} gh api repos/{}/releases/latest --jq '.tag_name' 2>/dev/null || echo "manual")
+          BASE_TAG=$(gh api repos/${{ github.repository }} \
+            --jq '.parent.full_name // empty' |
+            xargs -I{} gh api repos/{}/releases/latest \
+            --jq '.tag_name' 2>/dev/null || echo "manual")
 
           if [ -z "$BASE_TAG" ]; then
             echo "::error::Could not get original version"
@@ -259,15 +360,14 @@ jobs:
           echo "RELEASE_TAG2=$BASE_TAG" >> "$GITHUB_ENV"
 
           TAG=$BASE_TAG
-
           N=2
+
           while gh release view "$TAG" >/dev/null 2>&1; do
             TAG="${BASE_TAG}-${N}"
             N=$((N + 1))
           done
 
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
-
           echo "Using release tag: $BASE_TAG"
 
       - name: Select random banner
@@ -285,24 +385,27 @@ jobs:
           echo "BANNER_PATH=$BANNER" >> "$GITHUB_ENV"
           echo "BANNER_NAME=$(basename "$BANNER")" >> "$GITHUB_ENV"
 
-      # Renders the release title + notes as an image (used below the top banner
-      # in the release body when USE_BANNER_IMAGE is true). Independent from
-      # "Select random banner" above.
       - name: Draw release notes image
         if: |
-          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none')) &&
-          (github.event_name == 'push' || github.event.inputs.use_banner_image != 'false')
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' &&
+            github.event.inputs.release_type != 'none')) &&
+          (github.event_name == 'push' ||
+           github.event.inputs.use_banner_image != 'false')
         run: |
           pip3 install pillow
+
           OUTPUT_PATHS=$(python3 patches-repo/draw_banner.py \
             --image "patches-repo/images/bg-releases.png" \
             --font "patches-repo/FOT-Seurat Pro M.otf" \
             --title "                              ${{ env.RELEASE_TAG }}" \
             --notes "${{ github.event.inputs.release_notes }}" \
             --output "patches-repo/images/bg-final.png")
+
           echo "NOTES_IMAGE_PATHS<<EOF" >> "$GITHUB_ENV"
           echo "$OUTPUT_PATHS" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
+
           echo "NOTES_IMAGE_PATH=$(echo "$OUTPUT_PATHS" | head -n1)" >> "$GITHUB_ENV"
           echo "NOTES_IMAGE_NAME=$(basename "$(echo "$OUTPUT_PATHS" | head -n1)")" >> "$GITHUB_ENV"
 
@@ -319,62 +422,76 @@ jobs:
           BANNER_NAME: ${{ env.BANNER_NAME }}
           NOTES_IMAGE_PATHS: ${{ env.NOTES_IMAGE_PATHS }}
         run: |
-          PARENT_REPO=$(gh api repos/${{ github.repository }} --jq '.parent.full_name // empty')
+          PARENT_REPO=$(gh api repos/${{ github.repository }} \
+            --jq '.parent.full_name // empty')
+
           REPOSITORY_URL="https://github.com/$PARENT_REPO"
-          
+
           FLAGS=""
 
           if [ "$RELEASE_TYPE" = "prerelease" ]; then
             FLAGS="--prerelease"
           fi
-          
+
           gh release create "$RELEASE_TAG" \
             --title "$RELEASE_TAG" \
             --notes "" \
             $FLAGS
 
-          # Top banner: always shown, unrelated to the notes toggle.
           NOTES="<p align=\"center\">
             <img src=\"https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/${BANNER_PATH}\" alt=\"$BANNER_NAME\">
-            </p>
-            <p align="center">
+          </p>
+          <p align=\"center\">
             Release based on:
             <a href=\"$REPOSITORY_URL/releases/tag/$RELEASE_TAG2\">
               $PARENT_REPO@$RELEASE_TAG2
             </a>
-            </p>"
+          </p>"
 
           RELEASE_NOTES=$(printf "%b" "$RELEASE_NOTES")
 
-          if [ "$USE_BANNER_IMAGE" = "true" ] && [ -n "$NOTES_IMAGE_PATHS" ]; then
-            # uma <img> por pagina, na ordem em que foram geradas
+          if [ "$USE_BANNER_IMAGE" = "true" ] &&
+             [ -n "$NOTES_IMAGE_PATHS" ]; then
+
             while IFS= read -r img; do
               [ -z "$img" ] && continue
+
               IMG_NAME=$(basename "$img")
+
               gh release upload "$RELEASE_TAG" "$img" --clobber
+
               NOTES="$NOTES
-              <p align="center">
-              <img src=\"https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${IMG_NAME}\" alt=\"$IMG_NAME\">
+              <p align=\"center\">
+                <img src=\"https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${IMG_NAME}\" alt=\"$IMG_NAME\">
               </p>"
             done <<< "$NOTES_IMAGE_PATHS"
+
           elif [ -n "$RELEASE_NOTES" ]; then
             NOTES="$NOTES
             User notes:
             $RELEASE_NOTES"
           fi
 
-          NOTES="$NOTES"
-
           gh release edit "$RELEASE_TAG" \
             --notes "$NOTES"
 
       - name: Upload APK to Release
-        if: github.event.inputs.compile_apk != 'false' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'))
+        if: |
+          github.event.inputs.compile_apk != 'false' &&
+          (
+            github.event_name == 'push' ||
+            (
+              github.event_name == 'workflow_dispatch' &&
+              github.event.inputs.release_type != 'none'
+            )
+          )
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
-          APK=$(find android-apk/app/build/outputs/apk -name '*.apk' | head -n 1)
+          APK=$(find android-apk/app/build/outputs/apk \
+            -name '*.apk' | head -n 1)
+
           if [ -z "$APK" ]; then
             echo "::error::APK not found"
             exit 1
@@ -384,4 +501,6 @@ jobs:
 
           cp "$APK" "$NEW_NAME"
 
-          gh release upload "$RELEASE_TAG" "$NEW_NAME" --clobber
+          gh release upload "$RELEASE_TAG" \
+            "$NEW_NAME" \
+            --clobber
