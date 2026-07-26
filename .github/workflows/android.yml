@@ -202,24 +202,6 @@ jobs:
             echo "HOST_$var=$GITHUB_WORKSPACE/$path" >> "$GITHUB_ENV"
           done
 
-      - name: Import generated code ZIP
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.code_mode == 'import'
-        run: |
-          CODE_ZIP="${{ github.event.inputs.code_zip }}"
-          
-          if [ -z "$CODE_ZIP" ]; then
-            echo "::error::code_zip is required when code_mode is import"
-            exit 1
-          fi
-
-          mkdir -p "$GENERATED_CODE_DIR"
-          
-          curl -fL "$CODE_ZIP" -o /tmp/generated-code.zip
-
-          unzip -o /tmp/generated-code.zip -d "$GENERATED_CODE_DIR"
-
       - name: Configure Android build
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         env:
@@ -249,16 +231,35 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
         run: |
           chmod +x tools/XenosRecomp/thirdparty/dxc-bin/bin/x64/*
-
-      - name: Build native libraries
+          
+      - name: Apply custom Android changes and Patches
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          python3 patches-repo/patcher.py
+          
+      - name: Generate native sources
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
           cmake --build out/build/android-arm64 \
-            --target UnleashedRecomp \
-            main_hook \
-            file_redirect_hook \
-            gsl_alloc_hook \
-            hook_impl
+            --target UnleashedRecompGenerate
+      
+      - name: Import generated code ZIP
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.code_mode == 'import'
+        run: |
+          CODE_ZIP="${{ github.event.inputs.code_zip }}"
+          
+          if [ -z "$CODE_ZIP" ]; then
+            echo "::error::code_zip is required when code_mode is import"
+            exit 1
+          fi
+
+          mkdir -p "$GENERATED_CODE_DIR"
+          
+          curl -fL "$CODE_ZIP" -o /tmp/generated-code.zip
+
+          unzip -o /tmp/generated-code.zip -d "$GENERATED_CODE_DIR"
       
       - name: Export generated code ZIP
         if: |
@@ -273,7 +274,7 @@ jobs:
           cd "$GENERATED_CODE_DIR"
           zip -r "$GITHUB_WORKSPACE/generated-code.zip" .
           cd -
-
+      
       - name: Upload generated code ZIP
         if: |
           github.event_name == 'workflow_dispatch' &&
@@ -283,6 +284,16 @@ jobs:
           name: generated-code
           path: generated-code.zip
           if-no-files-found: error
+
+      - name: Build native libraries
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
+        run: |
+          cmake --build out/build/android-arm64 \
+            --target UnleashedRecomp \
+            main_hook \
+            file_redirect_hook \
+            gsl_alloc_hook \
+            hook_impl
 
       - name: Stage jniLibs
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
@@ -309,11 +320,6 @@ jobs:
           done
 
           ls -la "$dest"
-
-      - name: Apply custom Android changes
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
-        run: |
-          python3 patches-repo/patcher.py
 
       - name: Build APK
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false'
