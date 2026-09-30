@@ -221,6 +221,29 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
     // This is what SDL runs in. It invokes SDL_main(), eventually
     protected static Thread mSDLThread;
+    private static boolean gameStorageLocked;
+
+    static boolean isGameStorageLocked() {
+        return gameStorageLocked || (mSingleton != null && !mBrokenLibraries);
+    }
+
+    /** Called by native storage_android.cpp so every component uses the same root. */
+    public String getGameStoragePath() {
+        gameStorageLocked = true;
+        java.io.File root = AppStorage.activeGameRoot(this);
+        try {
+            AppStorage.validateRoot(this, root);
+            return root.getCanonicalPath();
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception.getMessage(), exception);
+        }
+    }
+
+    /** Native installer dialogs follow Android's language, including Russian and Portuguese. */
+    public String getLocalizedMessage(String resourceName, String detail) {
+        int resource = getResources().getIdentifier(resourceName, "string", getPackageName());
+        return resource == 0 ? "" : getString(resource, detail);
+    }
 
     protected static SDLGenericMotionListener_API12 getMotionListener() {
         if (mMotionListener == null) {
