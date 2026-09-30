@@ -409,6 +409,15 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         } catch(Exception ignored) {
         }
 
+        // Landscape gameplay would otherwise leave a black bar over the display cutout:
+        // the platform default keeps window content out of the cutout in landscape,
+        // and only extends under it in portrait. Opt in explicitly on both edges.
+        if (Build.VERSION.SDK_INT >= 28 /* Android 9 (P) */) {
+            WindowManager.LayoutParams params = getWindow().getAttributes();
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(params);
+        }
+
         setContentView(mLayout);
 
         setWindowStyle(false);
