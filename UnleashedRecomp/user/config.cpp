@@ -336,6 +336,7 @@ CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidVulkanDriver)
     { "Bundled",  EAndroidVulkanDriver::Bundled },
     { "Vauzi710", EAndroidVulkanDriver::Vauzi710 },
     { "ExperimentalA725", EAndroidVulkanDriver::ExperimentalA725 },
+    { "Adreno8xx", EAndroidVulkanDriver::Adreno8xx },
     { "Imported", EAndroidVulkanDriver::Imported }
 };
 

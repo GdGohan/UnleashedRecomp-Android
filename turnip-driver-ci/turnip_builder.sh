@@ -62,6 +62,7 @@ compile_mesa() {
         wfm-smart1)     plist="0005" ;;
         wfm-smart2)     plist="0006" ;;
         wfm-smart3)     plist="0007" ;;
+        gralloc)        plist="0010" ;;  # Adreno 8xx: MESA_REF=6b9cd5ab9cc3bfd0c79d9500a07a5e74351c72d1
         *) echo "Unknown VARIANT=$variant"; exit 1 ;;
     esac
     for p in $plist; do

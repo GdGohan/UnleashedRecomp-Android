@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (test build, 2026-10-09)
+
+- Added the **Adreno 8xx** Vulkan driver option: Mesa main `6b9cd5ab9c` (26.3.0-devel) Turnip with patch 0010, which restores UBWC detection for swapchain buffers from the newer Qualcomm gralloc. Without it, upstream Turnip shows a fully garbled image on Snapdragon 8 Elite. The option always renders with `TU_DEBUG=sysmem,nobin`. On Adreno 830 (Realme GT 7 Pro, Apotos, 100% resolution) it measured about 12 ms of GPU time per frame, compared with about 26 ms on the stock driver.
+- Auto selects the Adreno 8xx driver on Snapdragon 8 Elite (`ro.soc.model` SM8750) unless an imported driver is selected.
+- Fixed the 60 FPS ceiling on high refresh rate displays: the game now requests the display's fastest mode and votes the FPS option through `ANativeWindow_setFrameRate`. Set FPS above 60 in the options to use it.
+
 ## 0.6.0 (2026-10-01)
 
 - Fixed DLC imports after the base game is installed, including DLC-only ZIPs/folders and ZIPs left in to_install by older builds (issue #162). Packs are hash-checked in a temporary tree before replacement; previous packs can be recovered after an interrupted replacement.

@@ -46,6 +46,12 @@ static constexpr const char *VAUZI_710_DRIVER_NAME = "vulkan.vauzi710_v2_7.so";
 static constexpr const char *VAUZI_710_DRIVER_ASSET = "bundled_driver/vulkan.vauzi710_v2_7.so";
 static constexpr const char *EXPERIMENTAL_A725_DRIVER_NAME = "vulkan.wb26_2_rp_pair_ccu_color_a725.so";
 static constexpr const char *EXPERIMENTAL_A725_DRIVER_ASSET = "bundled_driver/vulkan.wb26_2_rp_pair_ccu_color_a725.so";
+// Mesa main 6b9cd5ab9c (26.3.0-devel) + patch 0010 (u_gralloc Qualcomm UBWC detection).
+// Validated on Adreno 830 (Snapdragon 8 Elite) with TU_DEBUG=sysmem,nobin: clean image and
+// ~12 ms GPU per frame at 100% resolution versus ~26 ms on the stock driver.
+static constexpr const char *ADRENO_8XX_DRIVER_NAME = "vulkan.mesa26_3_gralloc_a8xx.so";
+static constexpr const char *ADRENO_8XX_DRIVER_ASSET = "bundled_driver/vulkan.mesa26_3_gralloc_a8xx.so";
+static constexpr const char *ADRENO_8XX_TU_DEBUG_PRESET = "sysmem,nobin";
 static constexpr const char *DEFAULT_DRIVER_NAME = "vulkan.unleashed26_1_wfm_a732.so";
 static constexpr const char *LAST_IMPORTED_DRIVER_FILE = "last_imported_driver.txt";
 static constexpr const char *VULKAN_STARTUP_STATE_FILE = "vulkan_startup_state.txt";
@@ -132,6 +138,17 @@ static EAndroidGpuFamily DetectGpuFamily(std::string &description)
     return EAndroidGpuFamily::Other;
 }
 
+// Auto selects the Adreno 8xx driver only on SoCs it was validated on. The GPU model is not
+// known before a driver is loaded, so the SoC model (Android 12+) stands in for it.
+// SM8750 = Snapdragon 8 Elite (Adreno 830).
+static bool IsValidatedAdreno8xxSoc(std::string &socModel)
+{
+    char socProp[PROP_VALUE_MAX]{};
+    __system_property_get("ro.soc.model", socProp);
+    socModel = socProp;
+    return strncmp(socProp, "SM8750", 6) == 0;
+}
+
 static const char *VulkanDriverName(EAndroidVulkanDriver driver)
 {
     switch (driver)
@@ -140,6 +157,7 @@ static const char *VulkanDriverName(EAndroidVulkanDriver driver)
         case EAndroidVulkanDriver::Bundled:  return "Bundled";
         case EAndroidVulkanDriver::Vauzi710: return "Vauzi710";
         case EAndroidVulkanDriver::ExperimentalA725: return "ExperimentalA725";
+        case EAndroidVulkanDriver::Adreno8xx: return "Adreno8xx";
         case EAndroidVulkanDriver::Imported: return "Imported";
         case EAndroidVulkanDriver::Auto:
         default:                             return "Auto";
@@ -283,7 +301,7 @@ static bool ReadVulkanStartupState(VulkanStartupState &state, bool &stateFileExi
             "version=%u\nphase=%63s\nconfigured_driver=%u\nconfigured_render_mode=%u",
             &version, phase, &configuredDriver, &configuredRenderMode) != 4 ||
         version != 1 ||
-        configuredDriver > unsigned(EAndroidVulkanDriver::ExperimentalA725) ||
+        configuredDriver > unsigned(EAndroidVulkanDriver::Adreno8xx) ||
         configuredRenderMode > unsigned(EAndroidRenderMode::Sysmem))
     {
         return false;
@@ -819,6 +837,7 @@ static void InstallBundledDriversIfNeeded(const std::filesystem::path &turnipDir
     InstallBundledDriverAsset(turnipDir, BUNDLED_DRIVER_NAME, BUNDLED_DRIVER_ASSET);
     InstallBundledDriverAsset(turnipDir, VAUZI_710_DRIVER_NAME, VAUZI_710_DRIVER_ASSET);
     InstallBundledDriverAsset(turnipDir, EXPERIMENTAL_A725_DRIVER_NAME, EXPERIMENTAL_A725_DRIVER_ASSET);
+    InstallBundledDriverAsset(turnipDir, ADRENO_8XX_DRIVER_NAME, ADRENO_8XX_DRIVER_ASSET);
     WriteTextFileIfMissing(turnipDir / "driver_name.txt", BUNDLED_DRIVER_NAME);
 }
 
@@ -876,7 +895,8 @@ static std::string GetImportedDriverName(const std::string &turnipDir)
     // Migrate installs made before the Driver UI existed. Their selected imported
     // driver only lived in driver_name.txt.
     std::string legacyName = GetCustomDriverName(turnipDir);
-    if (legacyName != BUNDLED_DRIVER_NAME && legacyName != VAUZI_710_DRIVER_NAME)
+    if (legacyName != BUNDLED_DRIVER_NAME && legacyName != VAUZI_710_DRIVER_NAME &&
+        legacyName != ADRENO_8XX_DRIVER_NAME)
     {
         WriteTextFile(turnipPath / LAST_IMPORTED_DRIVER_FILE, legacyName.c_str());
         return legacyName;
@@ -1134,6 +1154,11 @@ void *AndroidGetCustomVulkanLoader()
             LOG("Android Vulkan driver mode: A725 Performance (experimental CCU COLOR pair).");
             break;
 
+        case EAndroidVulkanDriver::Adreno8xx:
+            driverName = ADRENO_8XX_DRIVER_NAME;
+            LOG("Android Vulkan driver mode: Adreno 8xx (Mesa 26.3 + gralloc UBWC fix).");
+            break;
+
         case EAndroidVulkanDriver::Imported:
             driverName = GetImportedDriverName(turnipDir);
             LOG("Android Vulkan driver mode: Imported.");
@@ -1145,6 +1170,17 @@ void *AndroidGetCustomVulkanLoader()
             // selected; fresh installs use the bundled asset.
             driverName = GetCustomDriverName(turnipDir);
             LOG("Android Vulkan driver mode: Auto.");
+
+            // Only replace the generic bundled default: an imported driver stays selected.
+            if (driverName == BUNDLED_DRIVER_NAME)
+            {
+                std::string socModel;
+                if (IsValidatedAdreno8xxSoc(socModel))
+                {
+                    driverName = ADRENO_8XX_DRIVER_NAME;
+                    LOGF("Auto: SoC {} (Adreno 830) selects the Adreno 8xx driver.", socModel);
+                }
+            }
             break;
     }
 
@@ -1226,6 +1262,15 @@ void *AndroidGetCustomVulkanLoader()
         effectiveRenderMode = EAndroidRenderMode::Sysmem;
         driverTuDebugPreset = "sysmem,nobin";
         LOG("A725 Performance experimental driver: forcing TU_DEBUG=sysmem,nobin.");
+    }
+
+    // Keyed on the resolved file so Auto on a validated SoC gets the same preset. GMEM works
+    // on this build too but measured slower (~14 ms vs ~12 ms on Adreno 830).
+    if (driverName == ADRENO_8XX_DRIVER_NAME)
+    {
+        effectiveRenderMode = EAndroidRenderMode::Sysmem;
+        driverTuDebugPreset = ADRENO_8XX_TU_DEBUG_PRESET;
+        LOGF("Adreno 8xx driver: forcing TU_DEBUG={}.", ADRENO_8XX_TU_DEBUG_PRESET);
     }
 
     ApplyRenderMode(effectiveRenderMode, driverTuDebugPreset == nullptr, driverTuDebugPreset);

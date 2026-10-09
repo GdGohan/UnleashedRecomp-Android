@@ -105,7 +105,8 @@ enum class EAndroidVulkanDriver : uint32_t
     Bundled,
     Imported,
     Vauzi710,
-    ExperimentalA725
+    ExperimentalA725,
+    Adreno8xx
 };
 
 enum class EAndroidRenderMode : uint32_t

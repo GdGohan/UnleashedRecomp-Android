@@ -90,7 +90,7 @@
     <string name="error_install_no_mod">В выбранном источнике нет mod.ini — мод не найден.</string>
 
     <string-array name="driver_labels">
-        <item>Авто (рекомендуется)</item><item>Системный</item><item>Встроенный Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (эксперимент; sysmem+nobin)</item><item>Импортированный</item>
+        <item>Авто (рекомендуется)</item><item>Системный</item><item>Встроенный Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (эксперимент; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Импортированный</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Авто (рекомендуется)</item><item>GMEM</item><item>Sysmem</item>

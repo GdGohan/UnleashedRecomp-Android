@@ -89,7 +89,7 @@
     <string name="error_install_no_mod">The selected source does not contain a mod.ini, so no mod could be found in it.</string>
 
     <string-array name="driver_labels">
-        <item>Auto (recommended)</item><item>System</item><item>Bundled Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (experimental; sysmem+nobin)</item><item>Imported</item>
+        <item>Auto (recommended)</item><item>System</item><item>Bundled Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (experimental; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Imported</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Auto (recommended)</item><item>GMEM</item><item>Sysmem</item>

@@ -441,6 +441,8 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
             getWindow().setAttributes(params);
         }
 
+        requestHighestRefreshRate();
+
         setContentView(mLayout);
 
         setWindowStyle(false);
@@ -478,6 +480,32 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         }
 
         SDLActivity.handleNativeState();
+    }
+
+    // High refresh rate phones keep apps at 60 Hz unless they ask for more, which caps the
+    // game at 60 FPS through vsync even when its FPS option is higher. Prefer the fastest
+    // mode at the current resolution; the native side also votes the FPS option through
+    // ANativeWindow_setFrameRate, and the in-game limiter still paces lower FPS settings.
+    private void requestHighestRefreshRate() {
+        try {
+            Display display = getWindowManager().getDefaultDisplay();
+            Display.Mode current = display.getMode();
+            Display.Mode best = current;
+            for (Display.Mode mode : display.getSupportedModes()) {
+                if (mode.getPhysicalWidth() == current.getPhysicalWidth() &&
+                    mode.getPhysicalHeight() == current.getPhysicalHeight() &&
+                    mode.getRefreshRate() > best.getRefreshRate()) {
+                    best = mode;
+                }
+            }
+            WindowManager.LayoutParams params = getWindow().getAttributes();
+            params.preferredDisplayModeId = best.getModeId();
+            getWindow().setAttributes(params);
+            Log.v(TAG, "Preferred display mode " + best.getModeId() + ": " +
+                best.getPhysicalWidth() + "x" + best.getPhysicalHeight() + " @ " + best.getRefreshRate() + " Hz");
+        } catch (Exception exception) {
+            Log.w(TAG, "Could not request a higher refresh rate", exception);
+        }
     }
 
     // Events

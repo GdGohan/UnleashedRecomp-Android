@@ -1166,6 +1166,7 @@ CONFIG_DEFINE_ENUM_LOCALE(EAndroidVulkanDriver)
             { EAndroidVulkanDriver::System,   { "SYSTEM", "System: use the Vulkan driver supplied by the device." } },
             { EAndroidVulkanDriver::Bundled,  { "BUNDLED", "Bundled: use the Turnip driver shipped with this APK." } },
             { EAndroidVulkanDriver::Vauzi710, { "ADRENO 710", "Adreno 710: use the bundled Vauzi 710/720/722 driver; Auto render mode selects Sysmem." } },
+            { EAndroidVulkanDriver::Adreno8xx, { "ADRENO 8XX", "Adreno 8xx: use the bundled Mesa 26.3 driver for Snapdragon 8 Elite; always renders in Sysmem." } },
             { EAndroidVulkanDriver::Imported, { "IMPORTED", "Imported: use the most recently installed .so from the driver_import folder." } }
         }
     }

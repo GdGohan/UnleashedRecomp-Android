@@ -2,6 +2,20 @@
 
 The APK contains three selectable Turnip builds.
 
+## Adreno 8xx (Snapdragon 8 Elite)
+
+`vulkan.mesa26_3_gralloc_a8xx.so` is a source-built Mesa main
+`6b9cd5ab9cc3bfd0c79d9500a07a5e74351c72d1` (26.3.0-devel) Turnip with
+`turnip-driver-ci/patches-unleashed/0010-gralloc-qcom-ubwc-detect.patch`
+(`VARIANT=gralloc`). The patch ports whitebelyash/mesa-tu8 `23ec0a5070a`: the newer
+Qualcomm gralloc no longer writes the `gmsm` magic, so upstream imports UBWC swapchain
+buffers as linear, and the whole image is garbled.
+
+The launcher exposes it as **Adreno 8xx** and forces `TU_DEBUG=sysmem,nobin`. Auto picks
+it on SM8750 (Snapdragon 8 Elite, Adreno 830) unless an imported driver is selected.
+Measured on Adreno 830 at 100% resolution (Apotos, Average GPU Frame): sysmem 11.95 ms,
+GMEM 14.21 ms, stock driver 26.12 ms. All three render cleanly.
+
 ## A725 Performance (experimental)
 
 `vulkan.wb26_2_rp_pair_ccu_color_a725.so` is the experimental

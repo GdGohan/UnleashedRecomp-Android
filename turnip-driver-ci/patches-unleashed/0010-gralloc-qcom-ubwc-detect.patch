@@ -1,0 +1,18 @@
+--- a/src/util/u_gralloc/u_gralloc_fallback.c
++++ b/src/util/u_gralloc/u_gralloc_fallback.c
+@@ -148,8 +148,13 @@
+    out->strides[0] = stride;
+ 
+ #ifdef HAS_FREEDRENO
+-   uint32_t gmsm = ('g' << 24) | ('m' << 16) | ('s' << 8) | 'm';
+-   if (hnd->handle->numInts >= 2 && hnd->handle->data[hnd->handle->numFds] == gmsm) {
++   /* UnleashedRecomp: newer Qualcomm gralloc (Snapdragon 8 Elite) no longer
++    * stores the 'gmsm' magic, so the old check never matched and UBWC
++    * swapchain buffers were imported as linear, garbling the whole image.
++    * Trust the UBWC flag whenever the handle carries the vendor ints
++    * (same fix as whitebelyash/mesa-tu8 gen8 23ec0a5070a).
++    */
++   if (hnd->handle->numInts >= 2) {
+       /* This UBWC flag was introduced in a5xx. */
+       bool ubwc = hnd->handle->data[hnd->handle->numFds + 1] & 0x08000000;
+       out->modifier = ubwc ? DRM_FORMAT_MOD_QCOM_COMPRESSED : DRM_FORMAT_MOD_LINEAR;
