@@ -1,6 +1,10 @@
 # Bundled Turnip driver
 
-The APK contains three selectable Turnip builds.
+The APK contains four Turnip binaries, one per selectable driver profile.
+
+The 0.5.3 **Adreno 8xx Experimental** profile (the A725 binary with
+`TU_DEBUG=sysmem,flushall`) is superseded by the **Adreno 8xx** profile below; the
+launcher maps a saved `ExperimentalA8xx` selection to it.
 
 ## Adreno 8xx (Snapdragon 8 Elite)
 

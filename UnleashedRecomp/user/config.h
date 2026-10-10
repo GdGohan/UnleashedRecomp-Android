@@ -116,6 +116,13 @@ enum class EAndroidRenderMode : uint32_t
     Sysmem
 };
 
+enum class EAndroidAudioPreset : uint32_t
+{
+    Default,
+    AYN,
+    LowLatency
+};
+
 enum class EWindowState : uint32_t
 {
     Normal,

@@ -302,6 +302,7 @@ extern "C" {
     extern uint32_t g_plumePipelineBinds;
     extern uint32_t g_plumeBarrierCalls;
     extern uint32_t g_plumeFramebufferSets;
+    extern std::atomic<bool> g_plumeDeviceLost;
 }
 
 static uint32_t g_statDrawCalls;
@@ -1613,6 +1614,17 @@ static void UpdateAndroidFrameRateVote(plume::RenderWindow window)
     const float frameRate = (Config::FPS >= FPS_MIN && Config::FPS < FPS_MAX) ? float(Config::FPS) : 240.0f;
     const int32_t result = s_setFrameRate(window, frameRate, 0 /* ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT */);
     LOGF("Android frame-rate vote: {} FPS (result {}).", frameRate, result);
+}
+
+// After VK_ERROR_DEVICE_LOST every submit fails, so the image stays frozen while the game
+// logic and audio keep running (issue #170). Tell the user to pick another driver instead.
+[[noreturn]] static void ExitOnAndroidDeviceLost()
+{
+    LOGFN_ERROR("Vulkan device lost (configured driver mode {}). Stopping the game.", uint32_t(Config::VulkanDriver.Value));
+    const auto message = os::android::LocaliseMessage("vulkan_device_lost",
+        "The GPU driver stopped responding (Vulkan device lost). Select another Vulkan driver in the launcher and start the game again.");
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GameWindow::GetTitle(), message.c_str(), GameWindow::s_pWindow);
+    std::_Exit(1);
 }
 #endif
 
@@ -3104,6 +3116,11 @@ void Video::Present()
         g_queue->waitForCommandFence(g_commandFences[g_frame].get());
         g_frameFenceProfiler.End();
         g_commandListStates[g_frame] = false;
+
+#if defined(__ANDROID__)
+        if (g_plumeDeviceLost)
+            ExitOnAndroidDeviceLost();
+#endif
 
         // Update the GPU profiler with the results from the timestamps of the frame.
         g_queryPools[g_frame]->queryResults();

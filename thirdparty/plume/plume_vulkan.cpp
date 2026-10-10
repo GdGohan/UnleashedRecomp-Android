@@ -11,6 +11,7 @@
 #include "plume_vulkan.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <climits>
 #include <cstdlib>
@@ -37,6 +38,10 @@ extern "C" {
     uint32_t g_plumePipelineBinds = 0;
     uint32_t g_plumeBarrierCalls = 0;
     uint32_t g_plumeFramebufferSets = 0;
+
+    // Set once a queue submit or fence wait reports VK_ERROR_DEVICE_LOST. The app polls it
+    // to stop rendering into a dead device instead of freezing the image silently.
+    std::atomic<bool> g_plumeDeviceLost{ false };
 }
 
 namespace plume {
@@ -3750,17 +3755,38 @@ namespace plume {
         }
 
         if (res != VK_SUCCESS) {
+            if (res == VK_ERROR_DEVICE_LOST) {
+                g_plumeDeviceLost = true;
+            }
+
             fprintf(stderr, "vkQueueSubmit failed with error code 0x%X.\n", res);
             return;
         }
     }
-    
+
     void VulkanCommandQueue::waitForCommandFence(RenderCommandFence *fence) {
         assert(fence != nullptr);
 
         VulkanCommandFence *interfaceFence = static_cast<VulkanCommandFence *>(fence);
         VkResult res = vkWaitForFences(device->vk, 1, &interfaceFence->vk, VK_TRUE, UINT64_MAX);
+
+        // Some Turnip KGSL builds return VK_TIMEOUT from this infinite wait while the GPU is
+        // still busy (issue #170, Adreno 650). Returning early lets the caller recycle the
+        // in-flight frame's command list and upload buffers, which ends in VK_ERROR_DEVICE_LOST.
+        uint32_t timeoutRetries = 0;
+        while (res == VK_TIMEOUT) {
+            if (timeoutRetries++ == 0) {
+                fprintf(stderr, "vkWaitForFences returned VK_TIMEOUT for an infinite wait; waiting again.\n");
+            }
+
+            res = vkWaitForFences(device->vk, 1, &interfaceFence->vk, VK_TRUE, UINT64_MAX);
+        }
+
         if (res != VK_SUCCESS) {
+            if (res == VK_ERROR_DEVICE_LOST) {
+                g_plumeDeviceLost = true;
+            }
+
             fprintf(stderr, "vkWaitForFences failed with error code 0x%X.\n", res);
             return;
         }

@@ -85,6 +85,12 @@
     <string-array name="render_mode_labels">
         <item>Auto (recomendado)</item><item>GMEM</item><item>Sysmem</item>
     </string-array>
+    <string name="launcher_audio">Áudio</string>
+    <string name="launcher_audio_preset">Predefinição de áudio</string>
+    <string name="launcher_audio_preset_hint">Escolha AYN se o jogo ficar sem som desde o início (AYN Odin 2 / Thor e portáteis semelhantes). O perfil POCO F8 Ultra ativa um caminho AAudio experimental de baixa latência para esse dispositivo; em outros pode causar estalos ou perda de som. Aplicado na próxima inicialização.</string>
+    <string-array name="audio_preset_labels">
+        <item>Padrão (recomendado)</item><item>AYN (consoles portáteis)</item><item>POCO F8 Ultra (baixa latência)</item>
+    </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Sempre ativados</item><item>Desativados</item>
     </string-array>
@@ -169,6 +175,7 @@
     <string name="installer_missing_files">Faltam arquivos necessários na origem escolhida. Selecione um pacote completo do jogo, da atualização ou do DLC.</string>
     <string name="installer_unknown_dlc">Não foi possível identificar o tipo de DLC. Escolha um pacote DLC compatível de Sonic Unleashed para Xbox 360.</string>
     <string name="installer_failed">Não foi possível instalar os pacotes escolhidos. Verifique os arquivos de origem, o acesso ao armazenamento e o espaço livre. Os detalhes estão no log.</string>
+    <string name="vulkan_device_lost">O driver da GPU parou de responder (Vulkan device lost). Escolha outro driver Vulkan no iniciador e inicie o jogo novamente.</string>
     <string name="installer_game_missing">Arquivos do jogo não encontrados. Copie as pastas game, update e, opcionalmente, dlc para:\n%1$s\n\nTambém é possível importar ISO, atualizações ou DLC no launcher. Reinicie o aplicativo após copiar.</string>
     <string name="error_file_empty">O arquivo selecionado está vazio.</string>
     <string name="error_schema_size">O arquivo do esquema do mod está ausente, vazio ou é grande demais.</string>

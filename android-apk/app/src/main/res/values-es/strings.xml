@@ -85,6 +85,12 @@
     <string-array name="render_mode_labels">
         <item>Auto (recomendado)</item><item>GMEM</item><item>Sysmem</item>
     </string-array>
+    <string name="launcher_audio">Audio</string>
+    <string name="launcher_audio_preset">Preset de audio</string>
+    <string name="launcher_audio_preset_hint">Elige AYN si el juego no tiene sonido desde el inicio (AYN Odin 2 / Thor y consolas similares). El perfil POCO F8 Ultra activa una ruta AAudio experimental de baja latencia para ese dispositivo; en otros puede causar chasquidos o pérdida de sonido. Se aplica en el próximo inicio.</string>
+    <string-array name="audio_preset_labels">
+        <item>Predeterminado (recomendado)</item><item>AYN (consolas portátiles)</item><item>POCO F8 Ultra (baja latencia)</item>
+    </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Siempre activados</item><item>Desactivados</item>
     </string-array>
@@ -169,6 +175,7 @@
     <string name="installer_missing_files">Faltan archivos necesarios en la fuente seleccionada. Elige un paquete completo del juego, la actualización o el DLC.</string>
     <string name="installer_unknown_dlc">No se pudo identificar el tipo de DLC. Elige un paquete DLC compatible de Sonic Unleashed para Xbox 360.</string>
     <string name="installer_failed">No se pudieron instalar los paquetes seleccionados. Revisa los archivos de origen, el acceso al almacenamiento y el espacio libre. Consulta los detalles en el registro.</string>
+    <string name="vulkan_device_lost">El controlador de la GPU dejó de responder (Vulkan device lost). Elige otro controlador Vulkan en el lanzador e inicia el juego de nuevo.</string>
     <string name="installer_game_missing">No se encontraron archivos del juego. Copia las carpetas game, update y la opcional dlc en:\n%1$s\n\nTambién puedes importar ISO, actualizaciones o DLC desde el lanzador. Reinicia la aplicación después de copiar.</string>
     <string name="error_file_empty">El archivo seleccionado está vacío.</string>
     <string name="error_schema_size">El archivo de esquema del mod no existe, está vacío o es demasiado grande.</string>

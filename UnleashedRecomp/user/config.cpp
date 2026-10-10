@@ -347,6 +347,13 @@ CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidRenderMode)
     { "Sysmem", EAndroidRenderMode::Sysmem }
 };
 
+CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidAudioPreset)
+{
+    { "Default",    EAndroidAudioPreset::Default },
+    { "AYN",        EAndroidAudioPreset::AYN },
+    { "LowLatency", EAndroidAudioPreset::LowLatency }
+};
+
 CONFIG_DEFINE_ENUM_TEMPLATE(EWindowState)
 {
     { "Normal",    EWindowState::Normal },

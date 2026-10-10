@@ -85,6 +85,12 @@
     <string-array name="render_mode_labels">
         <item>自動（推奨）</item><item>GMEM</item><item>Sysmem</item>
     </string-array>
+    <string name="launcher_audio">オーディオ</string>
+    <string name="launcher_audio_preset">オーディオプリセット</string>
+    <string name="launcher_audio_preset_hint">起動時から音が出ない場合は AYN を選択してください（AYN Odin 2 / Thor など）。POCO F8 Ultra プロファイルは、この端末向けに試験的な低遅延 AAudio 経路を有効にします。他の端末では音割れや無音が発生する可能性があります。次回起動時に適用されます。</string>
+    <string-array name="audio_preset_labels">
+        <item>デフォルト（推奨）</item><item>AYN（携帯ゲーム機）</item><item>POCO F8 Ultra（低遅延）</item>
+    </string-array>
     <string-array name="touch_policy_labels">
         <item>自動</item><item>常に表示</item><item>オフ</item>
     </string-array>
@@ -169,6 +175,7 @@
     <string name="installer_missing_files">選択したソースに必要なファイルがありません。本編、更新、またはDLCの完全なパッケージを選択してください。</string>
     <string name="installer_unknown_dlc">DLCの種類を判別できませんでした。対応するXbox 360版Sonic UnleashedのDLCパッケージを選択してください。</string>
     <string name="installer_failed">選択したパッケージをインストールできませんでした。ソースファイル、保存先へのアクセス、空き容量を確認してください。詳細はログに記録されています。</string>
+    <string name="vulkan_device_lost">GPU ドライバーが応答しなくなりました（Vulkan device lost）。ランチャーで別の Vulkan ドライバーを選択し、ゲームを再起動してください。</string>
     <string name="installer_game_missing">ゲームファイルがありません。game、update、必要に応じてdlcフォルダーを次の場所にコピーしてください：\n%1$s\n\nランチャーからISO、更新、DLCパッケージをインポートすることもできます。コピー後にアプリを再起動してください。</string>
     <string name="error_file_empty">選択したファイルは空です。</string>
     <string name="error_schema_size">MODスキーマのファイルが存在しないか、空か、大きすぎます。</string>

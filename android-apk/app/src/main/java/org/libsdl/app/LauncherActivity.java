@@ -56,6 +56,8 @@ public final class LauncherActivity extends Activity {
         "Auto", "System", "Bundled", "Vauzi710", "ExperimentalA725", "Adreno8xx", "Imported"
     };
     private static final String[] RENDER_MODE_VALUES = {"Auto", "GMEM", "Sysmem"};
+    // Must match CONFIG_DEFINE_ENUM_TEMPLATE(EAndroidAudioPreset) in UnleashedRecomp/user/config.cpp.
+    private static final String[] AUDIO_PRESET_VALUES = {"Default", "AYN", "LowLatency"};
     private static final String[] DLC_DIRECTORIES = {
         "Apotos & Shamar Adventure Pack", "Chun-nan Adventure Pack",
         "Empire City & Adabat Adventure Pack", "Holoska Adventure Pack",
@@ -70,6 +72,7 @@ public final class LauncherActivity extends Activity {
     private Button updateButton;
     private Spinner driverSpinner;
     private Spinner renderSpinner;
+    private Spinner audioPresetSpinner;
     private CheckBox skipIntro;
     private CheckBox validation;
     private CheckBox gfxCapture;
@@ -161,6 +164,14 @@ public final class LauncherActivity extends Activity {
         driverButtons.addView(button(R.string.launcher_import_driver, view -> chooseDriver()), weighted());
         driverButtons.addView(button(R.string.launcher_driver_folder, view -> openFiles("transfer")), weighted());
         graphics.addView(driverButtons);
+
+        LinearLayout audio = collapsibleCard(page, R.string.launcher_audio, "expand_audio", false);
+        audioPresetSpinner = settingSpinner(audio, R.string.launcher_audio_preset,
+            R.array.audio_preset_labels);
+        TextView audioHint = text(getString(R.string.launcher_audio_preset_hint), 13, false);
+        audioHint.setTextColor(Color.DKGRAY);
+        audioHint.setPadding(0, dp(4), 0, 0);
+        audio.addView(audioHint);
 
         // The runtime touch settings (on-screen controls, camera and stick) now live
         // in the in-game options menu; only the layout editor stays here as it launches
@@ -296,8 +307,13 @@ public final class LauncherActivity extends Activity {
 
     private void loadSettings() {
         Map<String, String> config = readConfig(AppStorage.configFile(this));
-        select(driverSpinner, config.get("Video.VulkanDriver"), DRIVER_VALUES);
+        String configuredDriver = config.get("Video.VulkanDriver");
+        // 0.5.3 shipped a separate "ExperimentalA8xx" profile; it is superseded by Adreno8xx.
+        if (configuredDriver != null && configuredDriver.replace("\"", "").trim().equalsIgnoreCase("ExperimentalA8xx"))
+            configuredDriver = "Adreno8xx";
+        select(driverSpinner, configuredDriver, DRIVER_VALUES);
         select(renderSpinner, config.get("Video.RenderMode"), RENDER_MODE_VALUES);
+        select(audioPresetSpinner, config.get("Audio.AndroidAudioPreset"), AUDIO_PRESET_VALUES);
         applyDriverPresetToLauncher();
         skipIntro.setChecked(Boolean.parseBoolean(config.get("Codes.SkipIntroLogos")));
         validation.setChecked(new File(getFilesDir(), "turnip/vk_layer_settings.txt").isFile());
@@ -310,6 +326,7 @@ public final class LauncherActivity extends Activity {
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
         values.put("Video.VulkanDriver", quote(DRIVER_VALUES[driverSpinner.getSelectedItemPosition()]));
         values.put("Video.RenderMode", quote(RENDER_MODE_VALUES[renderSpinner.getSelectedItemPosition()]));
+        values.put("Audio.AndroidAudioPreset", quote(AUDIO_PRESET_VALUES[audioPresetSpinner.getSelectedItemPosition()]));
         values.put("Codes.SkipIntroLogos", Boolean.toString(skipIntro.isChecked()));
         try {
             AppStorage.validateRoot(this, AppStorage.activeGameRoot(this));

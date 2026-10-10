@@ -94,6 +94,12 @@
     <string-array name="render_mode_labels">
         <item>Auto (recommended)</item><item>GMEM</item><item>Sysmem</item>
     </string-array>
+    <string name="launcher_audio">Audio</string>
+    <string name="launcher_audio_preset">Audio preset</string>
+    <string name="launcher_audio_preset_hint">Choose AYN if the game has no sound from startup (AYN Odin 2 / Thor and similar handhelds). The POCO F8 Ultra profile uses an experimental low-latency AAudio path for that device; it may cause crackling or loss of sound elsewhere. Takes effect on the next launch.</string>
+    <string-array name="audio_preset_labels">
+        <item>Default (recommended)</item><item>AYN (handheld consoles)</item><item>POCO F8 Ultra (low latency)</item>
+    </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Always on</item><item>Off</item>
     </string-array>
@@ -170,6 +176,7 @@
     <string name="installer_missing_files">Required files are missing from the selected installer source. Choose a complete game, update or DLC package.</string>
     <string name="installer_unknown_dlc">The DLC type could not be identified. Choose a supported Sonic Unleashed Xbox 360 DLC package.</string>
     <string name="installer_failed">Could not install the selected packages. Check the source files, storage access and free space. Details are in the log.</string>
+    <string name="vulkan_device_lost">The GPU driver stopped responding (Vulkan device lost). Select another Vulkan driver in the launcher and start the game again.</string>
     <string name="installer_game_missing">Game files not found. Copy the game, update and optional dlc folders into:\n%1$s\n\nYou can also import ISO, update or DLC packages in the launcher. Restart the app after copying.</string>
     <string name="error_file_empty">The selected file is empty.</string>
     <string name="error_schema_size">The mod schema file is missing, empty or too large.</string>
