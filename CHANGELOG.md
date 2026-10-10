@@ -1,18 +1,34 @@
 # Changelog
 
-## 0.6.1 (test build, 2026-10-10)
+## 0.6.1 (2026-10-10)
+
+### Graphics
+
+- Added the **Adreno 8xx** Vulkan driver option: Mesa main `6b9cd5ab9c` (26.3.0-devel) Turnip with patch 0010, which restores UBWC detection for swapchain buffers from the newer Qualcomm gralloc. Without it, upstream Turnip shows a fully garbled image on Snapdragon 8 Elite. The option always renders with `TU_DEBUG=sysmem,nobin`. On Adreno 830 (Realme GT 7 Pro, Apotos, 100% resolution) it measured about 12 ms of GPU time per frame, compared with about 26 ms on the stock driver.
+- Auto selects the Adreno 8xx driver on Snapdragon 8 Elite (`ro.soc.model` SM8750) unless an imported driver is selected.
+- The 0.5.3 **Adreno 8xx Experimental** profile is superseded by **Adreno 8xx**; a saved `ExperimentalA8xx` selection opens as Adreno 8xx in the launcher. Restored the missing in-game label for **A725 Performance**.
+- Fixed the 60 FPS ceiling on high refresh rate displays: the game now requests the display's fastest mode and votes the FPS option through `ANativeWindow_setFrameRate`. Set FPS above 60 in the options to use it.
+- Fence waits retry when a driver returns `VK_TIMEOUT` from an infinite wait instead of reusing the buffers of a frame the GPU is still rendering (issue #170, Adreno 650 with Turnip). After `VK_ERROR_DEVICE_LOST` the game now explains that the GPU driver stopped responding and exits, instead of freezing the image while audio keeps playing.
+
+### Audio
+
+- Restored the 0.5.3 Android audio work that 0.6.0 had dropped because `release/0.5.3` was never merged into `main` (issue #171): the **Default**, **AYN** and **POCO F8 Ultra (low latency)** audio presets in the launcher, the clocked-producer audio path and the AAudio route/background recovery. The stage name is again written to `log.txt`.
+
+### Installation
+
+- DLC import with the base game installed now ignores a title update or game dump staged next to the DLC packs instead of rejecting the whole batch (issue #166). If a DLC import still fails, the error is shown, the staged copies are removed and the installed game starts; previously every launch failed until `to_install` was cleared by hand.
+
+### Launcher and touch controls
 
 - Redesigned the launcher as a dark, landscape two-pane screen: game status chips, the selected driver and audio preset, **Launch game** and quick Controls/Mods/Files actions stay on the left, and the settings are grouped into sections (Game files, Graphics, Audio, Controls, Mods, Updates, Advanced) on the right. Background update checks show a banner instead of a dialog. Added an **Exit** action that also ends a game session left running in the background.
 - The launcher and mod screens are landscape-only, full screen and extend under the display cutout, and the app declares itself a game to the OS. These parts follow vladector's launcher proposal (PR #154).
 - The touch layout editor can resize each control on its own (issue #169): tap a control and use **-** / **+** to change only that control; tap empty space to resize the whole set as before. Sizes are saved in `touch_layout.ini` (version 2), which older builds still read.
-- Fixed **Arrange touch controls** while a game session was running in the background: the editor did not open, and the leftover request opened the editor instead of the game on the next launch from **Play**. The running game now picks up the request, and **Play** clears a stale one.
-- Restored the 0.5.3 Android audio work that 0.6.0 had dropped because `release/0.5.3` was never merged into `main` (issue #171): the **Default**, **AYN** and **POCO F8 Ultra (low latency)** audio presets in the launcher, the clocked-producer audio path and the AAudio route/background recovery. The stage name is again written to `log.txt`.
-- The 0.5.3 **Adreno 8xx Experimental** profile is superseded by the new **Adreno 8xx** profile; a saved `ExperimentalA8xx` selection opens as Adreno 8xx in the launcher. Restored the missing in-game label for **A725 Performance**.
-- DLC import with the base game installed now ignores a title update or game dump staged next to the DLC packs instead of rejecting the whole batch (issue #166). If a DLC import still fails, the error is shown, the staged copies are removed and the installed game starts; previously every launch failed until `to_install` was cleared by hand.
-- Fence waits retry when a driver returns `VK_TIMEOUT` from an infinite wait instead of reusing the buffers of a frame the GPU is still rendering (issue #170, Adreno 650 with Turnip). After `VK_ERROR_DEVICE_LOST` the game now explains that the GPU driver stopped responding and exits, instead of freezing the image while audio keeps playing.
-- Added the **Adreno 8xx** Vulkan driver option: Mesa main `6b9cd5ab9c` (26.3.0-devel) Turnip with patch 0010, which restores UBWC detection for swapchain buffers from the newer Qualcomm gralloc. Without it, upstream Turnip shows a fully garbled image on Snapdragon 8 Elite. The option always renders with `TU_DEBUG=sysmem,nobin`. On Adreno 830 (Realme GT 7 Pro, Apotos, 100% resolution) it measured about 12 ms of GPU time per frame, compared with about 26 ms on the stock driver.
-- Auto selects the Adreno 8xx driver on Snapdragon 8 Elite (`ro.soc.model` SM8750) unless an imported driver is selected.
-- Fixed the 60 FPS ceiling on high refresh rate displays: the game now requests the display's fastest mode and votes the FPS option through `ANativeWindow_setFrameRate`. Set FPS above 60 in the options to use it.
+- Fixed **Arrange touch controls** while a game session was running in the background: the editor did not open, and the leftover request opened the editor instead of the game on the next launch from **Launch game**. The running game now picks up the request, and **Launch game** clears a stale one.
+
+### Build metadata
+
+- Advanced the Android package to version code 22 / version name `0.6.1`; the 0.6.1 test builds used version code 21.
+- Updated the persistent diagnostic log banner to identify the build as `0.6.1-final`.
 
 ## 0.6.0 (2026-10-01)
 

@@ -19,9 +19,10 @@ This is an unofficial Android port of [Unleashed Recompiled](https://github.com/
 - Installing the game and mods from a `.zip` or folder directly in the app — no PC needed
 - Staging Xbox 360 base-game, title-update and DLC package files for verified installation, including adding DLC to an installed game
 - Choosing game storage on internal memory or a mounted SD card, with optional verified copying of game files, mods, settings and saves
-- On-screen touch controls with multi-touch, touch camera control, and a drag-to-arrange layout editor; the layout adapts to the game (D-pad in menus, a SKIP button in cutscenes)
+- On-screen touch controls with multi-touch, touch camera control, and a drag-to-arrange layout editor with per-control sizes; the layout adapts to the game (D-pad in menus, a SKIP button in cutscenes)
 - Bluetooth and USB controllers
-- Sound through speakers, wired headphones, and Bluetooth devices
+- Sound through speakers, wired headphones, and Bluetooth devices, with presets for handhelds that start silent (AYN) and a low-latency profile
+- High refresh rate displays: FPS options above 60 are no longer capped by a 60 Hz display mode
 - HMM and UMM-style mods through the included manager, including per-mod `ConfigSchemaFile` settings
 - Signed in-app updates from this repository's GitHub releases
 - Built-in Turnip driver plus importing another driver as a plain `.so` or an AdrenoTools/ExynosTools package `.zip`
@@ -29,11 +30,11 @@ This is an unofficial Android port of [Unleashed Recompiled](https://github.com/
 - App UI in English, Russian, Japanese, German, French, Spanish, Italian, and Portuguese
 - Logs and hang diagnostics that can be shared without `adb`
   
-The main development targets are Adreno 710, 725, 732, and 750. Adreno 720 and 722 are included in the bundled driver but need more testing. Other Adreno 6xx/7xx devices may work, but are not guaranteed.
+The main development targets are Adreno 710, 725, 732, and 750. Adreno 720 and 722 are included in the bundled driver but need more testing. Adreno 830 (Snapdragon 8 Elite) has its own bundled driver, selected automatically. Other Adreno 6xx/7xx/8xx devices may work, but are not guaranteed.
 
 **Mali support is experimental.** Recent Mali GPUs (Valhall generation and newer with a Vulkan 1.3 driver — e.g. G610/G615/G710/G715/G720) run the game through the stock system driver: the app detects a non-Adreno GPU automatically and skips the bundled Adreno driver. Textures are decompressed on the CPU when the driver lacks BC format support, which increases memory usage. Confirmed working on a Dimensity 8300 Ultra (Mali-G615). Older Mali generations (Bifrost and earlier) cannot work.
 
-PowerVR and Samsung Xclipse are untested. On Xclipse devices the system driver is used by default; community compatibility packages from [ExynosTools](https://github.com/WearyConcern1165/ExynosTools) can be dropped into `driver_import/` as a `.zip` to use them instead. If such a GPU supports BC texture formats natively, the launcher's **Debug** section has an experimental **Force native BC textures** toggle that skips the CPU-side ETC2 transcode ([issue #72](https://github.com/SansNope/UnleashedRecomp-Android/issues/72)); leave it off on Adreno/Turnip, which genuinely lacks BC.
+PowerVR and Samsung Xclipse are untested. On Xclipse devices the system driver is used by default; community compatibility packages from [ExynosTools](https://github.com/WearyConcern1165/ExynosTools) can be dropped into `driver_import/` as a `.zip` to use them instead. If such a GPU supports BC texture formats natively, the launcher's **Advanced** section has an experimental **Force native BC textures** toggle that skips the CPU-side ETC2 transcode ([issue #72](https://github.com/SansNope/UnleashedRecomp-Android/issues/72)); leave it off on Adreno/Turnip, which genuinely lacks BC.
 
 ## Before you install
 
@@ -52,12 +53,12 @@ For the smoothest first run, start with the default graphics settings. The Andro
 1. Download the latest APK from the repository's [Releases](https://github.com/SansNope/UnleashedRecomp-Android/releases) page.
 2. Allow your browser or file manager to install apps from unknown sources when Android asks.
 3. Install and open **UnleashedRecomp**. The first launch creates the app's folders and prepares the bundled graphics driver.
-4. Tap **Install game files (.zip / folder)** in the launcher and pick your game dump — either a ZIP archive or an extracted folder. The app finds the game inside the archive automatically, however the folders are nested, and copies everything into place with a progress display. You can also choose **ISO / update / DLC packages**, select the base game, title update and optional DLC files together, then launch once to verify and install them.
+4. In the launcher's **Game files** section, tap **Install game / DLC (.zip / folder)** and pick your game dump — either a ZIP archive or an extracted folder. The app finds the game inside the archive automatically, however the folders are nested, and copies everything into place with a progress display. You can also choose **ISO / update / DLC packages**, select the base game, title update and optional DLC files together, then launch once to verify and install them.
 5. Tap **Launch game**.
 
 A raw dump (`game` + `update`, with optional `dlc`) is enough: if the `patched` folder produced by the desktop installer is missing, the app builds the patched executable itself on first launch. No PC is required at any point.
 
-To add DLC later, use the same installer with DLC packages or a DLC-only ZIP/folder, then launch the game to verify and install the packs. You do not need to import the base game again.
+To add DLC later, use the same installer with DLC packages or a DLC-only ZIP/folder, then launch the game to verify and install the packs. You do not need to import the base game again; a title update staged next to the DLC is ignored. If a DLC import fails, the app shows the error, removes the staged copies and starts the installed game.
 
 The launcher's storage selector lists app folders on available volumes, including mounted SD cards. You can copy your existing installation to the selected location; the copy is verified and the original files are kept. Fully close and reopen the app before changing storage after a game session. A selected SD card must remain available when launching the game.
 
@@ -79,11 +80,11 @@ The touch controller appears automatically when you touch the screen. It provide
 - LB and RB
 - LT and RT
 - Start and Back
-- Camera control: drag anywhere on the free right half of the screen (default), or switch to a dedicated virtual right stick in the launcher's Controls card
+- Camera control: drag anywhere on the free right half of the screen (default), or switch to a dedicated virtual right stick under **Input** in the game's options menu
 
 During in-engine cutscenes the controls collapse into a single **SKIP** button; the full layout returns when gameplay resumes.
 
-Every control can be repositioned and resized: tap **Arrange touch controls** in the launcher to open the drag-to-arrange editor.
+Every control can be repositioned and resized: tap **Controls** in the launcher to open the drag-to-arrange editor. Drag a control to move it. Tap a control and use **-** / **+** to resize only that control; tap empty space and use **-** / **+** to resize the whole set ([issue #169](https://github.com/SansNope/UnleashedRecomp-Android/issues/169)).
 
 The layout adapts to context: the left stick becomes a directional pad in menus, on the world map, and on the results and level-up screens, and everything collapses to a single **SKIP** button during cutscenes and the attract movie.
 
@@ -93,7 +94,7 @@ On-screen control settings live in the game's own options menu under **Input**:
 - **Touch camera** — swipe on the right side of the screen, a dedicated right stick, or off.
 - **On-screen stick** — a virtual analog stick, or an 8-way D-pad you can also use during gameplay ([issue #68](https://github.com/SansNope/UnleashedRecomp-Android/issues/68)).
 
-The **Video** category adds **Show FPS** and **Show Profiler** toggles. To drag the on-screen buttons into a custom arrangement, use **Arrange touch controls** in the launcher.
+The **Video** category adds **Show FPS** and **Show Profiler** toggles. To drag the on-screen buttons into a custom arrangement, use **Controls** in the launcher.
 
 When a physical controller sends input, the touch overlay hides itself. Touch the screen again to bring it back.
 
@@ -101,7 +102,7 @@ USB and Bluetooth controllers supported by SDL should work without additional se
 
 ## Installing mods
 
-1. Tap **Install a mod (.zip / folder)** in the launcher's Mods card and pick the mod archive or folder. Every mod inside is detected by its `mod.ini` — archives containing several mods install in one go.
+1. Tap **Install a mod (.zip / folder)** in the launcher's **Mods** section and pick the mod archive or folder. Every mod inside is detected by its `mod.ini` — archives containing several mods install in one go.
 2. Tap **Manage mods**, enable the mods you want, and arrange their priority. Mods that declare HMM's `ConfigSchemaFile` show a settings button for their own booleans, numbers, text values and lists.
 3. Tap **Save mod list** and restart the game.
 
@@ -119,7 +120,7 @@ The launcher checks this repository's latest GitHub release periodically and als
 
 The app includes a community-built Mesa Turnip driver tuned for the Adreno devices listed above. It is selected automatically on a fresh installation. A separate **Adreno 710 (Vauzi)** entry bundles Vauzi-17's current 710/720/722 release for A/B testing; its Auto render mode selects Sysmem.
 
-You can choose the driver and render mode from the game's options menu. If you want to try another driver:
+You can choose the driver and render mode in the launcher's **Graphics** section or in the game's options menu. If you want to try another driver:
 
 1. Open the app's transfer folder in Android Files.
 2. Copy a compatible ARM64 driver into `driver_import` — either a plain Turnip `.so` or a whole driver-package `.zip` (AdrenoTools releases; ExynosTools backend loading is experimental).
@@ -135,6 +136,8 @@ Only import drivers from a source you trust. A bad or incompatible Vulkan driver
 - **Adreno 732:** supported through a community device profile based on the closely related Adreno 735.
 - **Adreno 750:** disable MSAA if you see corruption. The known issue is in the Turnip MSAA path; the default Android settings already leave anti-aliasing off.
 - **Adreno 720 / 722:** driver entries are included, but real-device feedback is still needed.
+- **Adreno 830 (Snapdragon 8 Elite):** Auto selects the bundled **Adreno 8xx** driver (Mesa 26.3 with a Qualcomm gralloc UBWC fix), which always renders with `TU_DEBUG=sysmem,nobin`. Other Adreno 8xx GPUs can select it manually; it has only been validated on Adreno 830.
+- **Adreno 6xx with an imported Turnip driver:** if the image freezes while audio continues, switch to **A725 Performance** or another driver. Since 0.6.1 the game reports a lost GPU device instead of freezing ([issue #170](https://github.com/SansNope/UnleashedRecomp-Android/issues/170)).
 
 Technical findings and current limitations for ExynosTools and PanVK are documented in [`docs/GRAPHICS_DRIVERS.md`](docs/GRAPHICS_DRIVERS.md).
 
@@ -154,7 +157,7 @@ These options make separately downloaded "low end" texture packs unnecessary for
 
 ### The game cannot find my files
 
-Use **Install game files (.zip / folder)** in the launcher — it locates the game inside your dump automatically and reports what is missing. If you copied files manually, make sure the selected directory contains `game`, `update`, and, if available, `dlc`, in the Files location exposed by **UnleashedRecomp**, not an arbitrary folder with the same name.
+Use **Install game / DLC (.zip / folder)** in the launcher's **Game files** section — it locates the game inside your dump automatically and reports what is missing. If you copied files manually, make sure the selected directory contains `game`, `update`, and, if available, `dlc`, in the Files location exposed by **UnleashedRecomp**, not an arbitrary folder with the same name.
 
 ### The game opens to a black screen or corrupted graphics
 
@@ -166,6 +169,10 @@ Use **Install game files (.zip / folder)** in the launcher — it locates the ga
 ### Sound crackles or stops after using Bluetooth
 
 Pause for a moment after connecting or disconnecting the device, then return to the game. If audio does not recover, restart the app and attach the latest log when reporting the issue.
+
+### No sound or high audio latency
+
+The launcher's **Audio** section has presets: **AYN** for handhelds that start without sound (AYN Odin 2 / Thor and similar) and **POCO F8 Ultra (low latency)**, an experimental exclusive low-latency AAudio path that may crackle on other devices. The preset takes effect on the next launch.
 
 ### The app freezes
 
@@ -217,7 +224,7 @@ This port exists because many people shared code, testing time, traces, hardware
 - [ITSeniy](https://github.com/ITSeniy) — lifecycle and audio stabilization, Vulkan recovery, touch controls, Android file access, driver management, and the in-app mod workflow
 - [GdGohan](https://github.com/GdGohan) — ModLoader compatibility work and Android build contributions
 - [puopg (Michael Chen)](https://github.com/puopg) — the guest-memory `memmove` fix for ring crashes and collision triggers, removal of earlier workarounds, and fresh-clone build fixes
-- [vladector](https://github.com/vladector) — landscape rendering in the display-cutout area
+- [vladector](https://github.com/vladector) — landscape rendering in the display-cutout area and the landscape, full-screen launcher proposal
 - [renderbag/plume](https://github.com/renderbag/plume) — the Vulkan renderer used by Unleashed Recompiled
 - Mesa's Freedreno/Turnip developers — the open-source Vulkan driver that makes the port practical on Adreno hardware
 - [bylaws/libadrenotools](https://github.com/bylaws/libadrenotools) and the Android driver community — runtime custom-driver loading
