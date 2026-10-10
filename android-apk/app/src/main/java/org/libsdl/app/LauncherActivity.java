@@ -5,20 +5,26 @@ import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /** Lightweight pre-flight screen. It deliberately does not load SDL or Vulkan. */
 public final class LauncherActivity extends Activity {
@@ -64,6 +71,36 @@ public final class LauncherActivity extends Activity {
         "Mazuri Adventure Pack", "Spagonia Adventure Pack"
     };
 
+    // Settings sections, in rail order. The index is remembered across launches.
+    private static final int SECTION_FILES = 0;
+    private static final int SECTION_GRAPHICS = 1;
+    private static final int SECTION_AUDIO = 2;
+    private static final int SECTION_CONTROLS = 3;
+    private static final int SECTION_MODS = 4;
+    private static final int SECTION_UPDATES = 5;
+    private static final int SECTION_ADVANCED = 6;
+
+    // Dark palette shared with the game's look; the window background is in LauncherTheme.
+    private static final int COLOR_PANE = 0xFF181B20;
+    private static final int COLOR_RAIL = 0xFF15181C;
+    private static final int COLOR_DIVIDER = 0xFF2A2E35;
+    private static final int COLOR_BUTTON = 0xFF1F232A;
+    private static final int COLOR_TEXT = 0xFFECEEF1;
+    private static final int COLOR_TEXT_SECONDARY = 0xFFA3A9B3;
+    private static final int COLOR_TEXT_MUTED = 0xFF7A808A;
+    private static final int COLOR_ACCENT = 0xFFE69B19;
+    private static final int COLOR_ACCENT_TINT = 0x33E69B19;
+    private static final int COLOR_ON_ACCENT = 0xFF2A1700;
+    private static final int COLOR_SUCCESS = 0xFF7BD88F;
+    private static final int COLOR_SUCCESS_BG = 0xFF1E3A26;
+    private static final int COLOR_WARNING = 0xFFF2C46D;
+    private static final int COLOR_WARNING_BG = 0xFF3D3015;
+    private static final int COLOR_DANGER = 0xFFF08A80;
+    private static final int COLOR_DANGER_BG = 0xFF42201D;
+    private static final int COLOR_NEUTRAL_BG = 0xFF262A31;
+    private static final int COLOR_INFO = 0xFF8EC2F5;
+    private static final int COLOR_INFO_BG = 0xFF1C2F45;
+
     private TextView installStatus;
     private TextView driverStatus;
     private TextView diagnosticsStatus;
@@ -73,21 +110,41 @@ public final class LauncherActivity extends Activity {
     private Spinner driverSpinner;
     private Spinner renderSpinner;
     private Spinner audioPresetSpinner;
-    private CheckBox skipIntro;
-    private CheckBox validation;
-    private CheckBox gfxCapture;
-    private CheckBox forceBc;
+    private CompoundButton skipIntro;
+    private CompoundButton validation;
+    private CompoundButton gfxCapture;
+    private CompoundButton forceBc;
     private SharedPreferences prefs;
     private InstallState lastInstallState;
     private TextView storageStatus;
     private boolean fileOperation;
 
+    // Home pane.
+    private LinearLayout homeContent;
+    private LinearLayout statusChips;
+    private TextView installSummary;
+    private TextView driverSummary;
+    private TextView audioSummary;
+
+    // Settings pane.
+    private TextView updateBanner;
+    private UpdateManager.UpdateInfo pendingUpdate;
+    private ScrollView sectionScroll;
+    private LinearLayout sectionContent;
+    private final List<View> sections = new ArrayList<>();
+    private final List<TextView> railItems = new ArrayList<>();
+
     private static final class InstallState {
         final boolean ready;
         final String message;
+        final int dlcCount;
         InstallState(boolean ready, String message) {
+            this(ready, message, 0);
+        }
+        InstallState(boolean ready, String message, int dlcCount) {
             this.ready = ready;
             this.message = message;
+            this.dlcCount = dlcCount;
         }
     }
 
@@ -96,6 +153,7 @@ public final class LauncherActivity extends Activity {
         super.onCreate(state);
         prefs = getPreferences(MODE_PRIVATE);
         setContentView(buildPage());
+        ImmersiveWindow.hideSystemBars(this);
         loadSettings();
         maybeCheckForUpdates();
     }
@@ -107,52 +165,168 @@ public final class LauncherActivity extends Activity {
         refreshStatuses();
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) ImmersiveWindow.hideSystemBars(this);
+    }
+
+    /**
+     * Landscape two-pane launcher: the home pane (status, Play, quick actions) stays
+     * visible, and the settings pane shows one section at a time next to a section rail.
+     * Every widget is created up front, so loadSettings()/saveSettings() never see a
+     * missing view whichever section is selected.
+     */
     private View buildPage() {
+        LinearLayout root = row();
+        root.setGravity(Gravity.NO_GRAVITY);
+        root.setBaselineAligned(false);
+        root.addView(buildHomePane(), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 38f));
+        root.addView(divider(), new LinearLayout.LayoutParams(dp(1), ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(buildSettingsPane(), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 62f));
+
+        // The window extends under the display cutout. Pad the outer panes instead of the
+        // root so each pane's own background reaches the screen edge around the camera.
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.view.DisplayCutout cutout = insets.getDisplayCutout();
+            int left = cutout != null ? cutout.getSafeInsetLeft() : 0;
+            int top = cutout != null ? cutout.getSafeInsetTop() : 0;
+            int right = cutout != null ? cutout.getSafeInsetRight() : 0;
+            int bottom = cutout != null ? cutout.getSafeInsetBottom() : 0;
+            homeContent.setPadding(dp(20) + left, dp(18) + top, dp(20), dp(14) + bottom);
+            sectionContent.setPadding(dp(18), dp(14) + top, dp(18) + right, dp(18) + bottom);
+            return insets;
+        });
+        return root;
+    }
+
+    private View buildHomePane() {
         ScrollView scroll = new ScrollView(this);
-        LinearLayout page = column();
-        page.setPadding(dp(18), dp(18), dp(18), dp(28));
-        scroll.addView(page);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(COLOR_PANE);
+        LinearLayout pane = column();
+        homeContent = pane;
+        pane.setPadding(dp(20), dp(18), dp(20), dp(14));
+        scroll.addView(pane, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView title = text(getString(R.string.launcher_title), 28, true);
-        page.addView(title);
-        TextView subtitle = text(getString(R.string.launcher_subtitle), 15, false);
-        subtitle.setTextColor(Color.DKGRAY);
-        subtitle.setPadding(0, dp(3), 0, dp(14));
-        page.addView(subtitle);
+        pane.addView(text(getString(R.string.launcher_title), 24, true));
+        TextView version = text("v" + UpdateManager.currentVersion(this), 13, false);
+        version.setTextColor(COLOR_TEXT_MUTED);
+        pane.addView(version);
 
-        LinearLayout files = card(R.string.launcher_game_files);
+        statusChips = row();
+        statusChips.setPadding(0, dp(12), 0, 0);
+        pane.addView(statusChips);
+
+        installSummary = text("", 13, false);
+        installSummary.setPadding(0, dp(8), 0, 0);
+        installSummary.setMaxLines(4);
+        installSummary.setEllipsize(TextUtils.TruncateAt.END);
+        installSummary.setOnClickListener(view -> selectSection(SECTION_FILES));
+        pane.addView(installSummary);
+
+        driverSummary = summaryText(dp(10));
+        driverSummary.setOnClickListener(view -> selectSection(SECTION_GRAPHICS));
+        pane.addView(driverSummary);
+        audioSummary = summaryText(dp(2));
+        audioSummary.setOnClickListener(view -> selectSection(SECTION_AUDIO));
+        pane.addView(audioSummary);
+
+        pane.addView(new View(this), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        playButton = primaryButton(R.string.launcher_play, view -> launchGame(false));
+        LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(56));
+        playParams.topMargin = dp(14);
+        pane.addView(playButton, playParams);
+
+        LinearLayout quick = row();
+        quick.setPadding(0, dp(8), 0, 0);
+        quick.addView(button(R.string.launcher_controls, view -> launchLayoutEditor()), spaced(0, 4));
+        quick.addView(button(R.string.launcher_mods,
+            view -> startActivity(new Intent(this, ModManagerActivity.class))), spaced(4, 4));
+        quick.addView(button(R.string.launcher_quick_files, view -> openFiles("game")), spaced(4, 0));
+        pane.addView(quick);
+
+        TextView exit = text(getString(R.string.launcher_exit), 13, false);
+        exit.setTextColor(COLOR_TEXT_MUTED);
+        exit.setGravity(Gravity.CENTER);
+        exit.setPadding(0, dp(10), 0, dp(2));
+        exit.setOnClickListener(view -> exitApp());
+        pane.addView(exit, matchWrap());
+        return scroll;
+    }
+
+    private View buildSettingsPane() {
+        LinearLayout pane = row();
+        pane.setGravity(Gravity.NO_GRAVITY);
+        pane.setBaselineAligned(false);
+
+        ScrollView railScroll = new ScrollView(this);
+        railScroll.setBackgroundColor(COLOR_RAIL);
+        LinearLayout rail = column();
+        rail.setPadding(dp(8), dp(12), dp(8), dp(12));
+        railScroll.addView(rail);
+        pane.addView(railScroll, new LinearLayout.LayoutParams(dp(136), ViewGroup.LayoutParams.MATCH_PARENT));
+        pane.addView(divider(), new LinearLayout.LayoutParams(dp(1), ViewGroup.LayoutParams.MATCH_PARENT));
+
+        sectionScroll = new ScrollView(this);
+        LinearLayout content = column();
+        sectionContent = content;
+        content.setPadding(dp(18), dp(14), dp(18), dp(18));
+        sectionScroll.addView(content);
+        pane.addView(sectionScroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+
+        updateBanner = text("", 13, false);
+        updateBanner.setTextColor(COLOR_INFO);
+        updateBanner.setBackground(pressable(rounded(COLOR_INFO_BG, 0, 8)));
+        updateBanner.setPadding(dp(12), dp(8), dp(12), dp(8));
+        updateBanner.setVisibility(View.GONE);
+        updateBanner.setOnClickListener(view -> {
+            if (pendingUpdate != null) showUpdateDialog(pendingUpdate);
+        });
+        LinearLayout.LayoutParams bannerParams = matchWrap();
+        bannerParams.bottomMargin = dp(12);
+        content.addView(updateBanner, bannerParams);
+
+        addSection(rail, content, R.string.launcher_game_files, R.string.launcher_game_files, this::buildFilesSection);
+        addSection(rail, content, R.string.launcher_section_graphics, R.string.launcher_graphics, this::buildGraphicsSection);
+        addSection(rail, content, R.string.launcher_audio, R.string.launcher_audio, this::buildAudioSection);
+        addSection(rail, content, R.string.launcher_controls, R.string.launcher_controls, this::buildControlsSection);
+        addSection(rail, content, R.string.launcher_mods, R.string.launcher_mods, this::buildModsSection);
+        addSection(rail, content, R.string.launcher_section_updates, R.string.launcher_updates, this::buildUpdatesSection);
+        addSection(rail, content, R.string.launcher_section_advanced, R.string.launcher_debug, this::buildAdvancedSection);
+        selectSection(prefs.getInt("launcher_section", SECTION_FILES));
+        return pane;
+    }
+
+    private void buildFilesSection(LinearLayout section) {
         installStatus = statusText();
-        files.addView(installStatus);
-        files.addView(button(R.string.launcher_install_game, view -> chooseInstallSource(true)));
-        LinearLayout fileButtons = row();
-        fileButtons.addView(button(R.string.launcher_open_files, view -> openFiles("game")), weighted());
-        fileButtons.addView(button(R.string.launcher_recheck, view -> refreshStatuses()), weighted());
-        files.addView(fileButtons);
-        files.addView(button(R.string.launcher_open_saves, view -> openFiles("save")));
+        section.addView(installStatus);
+        buttonGrid(section,
+            button(R.string.launcher_install_game, view -> chooseInstallSource(true)),
+            button(R.string.launcher_open_files, view -> openFiles("game")),
+            button(R.string.launcher_recheck, view -> refreshStatuses()),
+            button(R.string.launcher_open_saves, view -> openFiles("save")));
         storageStatus = statusText();
-        files.addView(storageStatus);
-        files.addView(button(R.string.storage_choose, view -> chooseStorage()));
-        page.addView(files);
+        storageStatus.setPadding(0, dp(16), 0, 0);
+        section.addView(storageStatus);
+        buttonGrid(section, button(R.string.storage_choose, view -> chooseStorage()));
+    }
 
-        LinearLayout updates = card(R.string.launcher_updates);
-        updateStatus = statusText();
-        updateStatus.setText(getString(R.string.update_current_version, UpdateManager.currentVersion(this)));
-        updates.addView(updateStatus);
-        updateButton = button(R.string.update_check, view -> checkForUpdates(true));
-        updates.addView(updateButton);
-        page.addView(updates);
-
-        LinearLayout graphics = collapsibleCard(page, R.string.launcher_graphics, "expand_graphics", false);
+    private void buildGraphicsSection(LinearLayout section) {
         driverStatus = statusText();
-        graphics.addView(driverStatus);
-        driverSpinner = settingSpinner(graphics, R.string.launcher_driver,
-            R.array.driver_labels);
-        renderSpinner = settingSpinner(graphics, R.string.launcher_render_mode,
-            R.array.render_mode_labels);
+        section.addView(driverStatus);
+        driverSpinner = spinner(R.array.driver_labels);
+        settingRow(section, R.string.launcher_driver, driverSpinner);
+        renderSpinner = spinner(R.array.render_mode_labels);
+        settingRow(section, R.string.launcher_render_mode, renderSpinner);
         driverSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 applyDriverPresetToLauncher();
+                updateSummaries();
             }
 
             @Override
@@ -160,55 +334,118 @@ public final class LauncherActivity extends Activity {
                 applyDriverPresetToLauncher();
             }
         });
-        LinearLayout driverButtons = row();
-        driverButtons.addView(button(R.string.launcher_import_driver, view -> chooseDriver()), weighted());
-        driverButtons.addView(button(R.string.launcher_driver_folder, view -> openFiles("transfer")), weighted());
-        graphics.addView(driverButtons);
+        buttonGrid(section,
+            button(R.string.launcher_import_driver, view -> chooseDriver()),
+            button(R.string.launcher_driver_folder, view -> openFiles("transfer")));
+    }
 
-        LinearLayout audio = collapsibleCard(page, R.string.launcher_audio, "expand_audio", false);
-        audioPresetSpinner = settingSpinner(audio, R.string.launcher_audio_preset,
-            R.array.audio_preset_labels);
-        TextView audioHint = text(getString(R.string.launcher_audio_preset_hint), 13, false);
-        audioHint.setTextColor(Color.DKGRAY);
-        audioHint.setPadding(0, dp(4), 0, 0);
-        audio.addView(audioHint);
+    private void buildAudioSection(LinearLayout section) {
+        audioPresetSpinner = spinner(R.array.audio_preset_labels);
+        settingRow(section, R.string.launcher_audio_preset, audioPresetSpinner);
+        audioPresetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updateSummaries();
+            }
 
-        // The runtime touch settings (on-screen controls, camera and stick) now live
-        // in the in-game options menu; only the layout editor stays here as it launches
-        // the game renderer.
-        LinearLayout controls = card(R.string.launcher_controls);
-        controls.addView(text(getString(R.string.launcher_controls_moved), 14, false));
-        Button editLayout = button(R.string.launcher_edit_layout, view -> launchLayoutEditor());
-        controls.addView(editLayout);
-        page.addView(controls);
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        section.addView(hint(getString(R.string.launcher_audio_preset_hint)));
+    }
 
-        LinearLayout mods = collapsibleCard(page, R.string.launcher_mods, "expand_mods", false);
-        mods.addView(text(getString(R.string.launcher_mods_summary), 14, false));
-        LinearLayout modButtons = row();
-        modButtons.addView(button(R.string.launcher_manage_mods,
-            view -> startActivity(new Intent(this, ModManagerActivity.class))), weighted());
-        modButtons.addView(button(R.string.launcher_install_mod, view -> chooseInstallSource(false)), weighted());
-        mods.addView(modButtons);
+    // The runtime touch settings (on-screen controls, camera and stick) live in the
+    // in-game options menu; only the layout editor stays here as it launches the game
+    // renderer.
+    private void buildControlsSection(LinearLayout section) {
+        section.addView(hint(getString(R.string.launcher_controls_moved)));
+        buttonGrid(section, button(R.string.launcher_edit_layout, view -> launchLayoutEditor()));
+    }
 
-        LinearLayout debug = collapsibleCard(page, R.string.launcher_debug, "expand_debug", false);
-        skipIntro = checkBox(R.string.launcher_skip_intro);
-        validation = checkBox(R.string.launcher_validation);
-        gfxCapture = checkBox(R.string.launcher_gfx_capture);
-        forceBc = checkBox(R.string.launcher_force_bc);
-        debug.addView(skipIntro);
-        debug.addView(validation);
-        debug.addView(gfxCapture);
-        debug.addView(forceBc);
+    private void buildModsSection(LinearLayout section) {
+        section.addView(hint(getString(R.string.launcher_mods_summary)));
+        buttonGrid(section,
+            button(R.string.launcher_manage_mods, view -> startActivity(new Intent(this, ModManagerActivity.class))),
+            button(R.string.launcher_install_mod, view -> chooseInstallSource(false)));
+    }
+
+    private void buildUpdatesSection(LinearLayout section) {
+        updateStatus = statusText();
+        updateStatus.setText(getString(R.string.update_current_version, UpdateManager.currentVersion(this)));
+        section.addView(updateStatus);
+        updateButton = button(R.string.update_check, view -> checkForUpdates(true));
+        buttonGrid(section, updateButton);
+    }
+
+    private void buildAdvancedSection(LinearLayout section) {
+        skipIntro = switchRow(section, R.string.launcher_skip_intro);
+        validation = switchRow(section, R.string.launcher_validation);
+        gfxCapture = switchRow(section, R.string.launcher_gfx_capture);
+        forceBc = switchRow(section, R.string.launcher_force_bc);
         diagnosticsStatus = statusText();
-        debug.addView(diagnosticsStatus);
-        debug.addView(button(R.string.launcher_open_logs, view -> openFiles("transfer")));
+        diagnosticsStatus.setPadding(0, dp(12), 0, 0);
+        section.addView(diagnosticsStatus);
+        buttonGrid(section, button(R.string.launcher_open_logs, view -> openFiles("transfer")));
+    }
 
-        playButton = button(R.string.launcher_play, view -> launchGame(false));
-        playButton.setTextSize(18);
-        LinearLayout.LayoutParams playParams = matchWrap();
-        playParams.topMargin = dp(8);
-        page.addView(playButton, playParams);
-        return scroll;
+    private void addSection(LinearLayout rail, LinearLayout content, int railLabelId, int titleId,
+            Consumer<LinearLayout> builder) {
+        final int index = sections.size();
+        LinearLayout section = column();
+        TextView title = text(getString(titleId), 18, true);
+        title.setPadding(0, 0, 0, dp(10));
+        section.addView(title);
+        builder.accept(section);
+        content.addView(section, matchWrap());
+        sections.add(section);
+
+        TextView item = text(getString(railLabelId), 14, false);
+        item.setPadding(dp(12), dp(10), dp(12), dp(10));
+        item.setSingleLine(true);
+        item.setEllipsize(TextUtils.TruncateAt.END);
+        item.setOnClickListener(view -> selectSection(index));
+        LinearLayout.LayoutParams itemParams = matchWrap();
+        itemParams.bottomMargin = dp(2);
+        rail.addView(item, itemParams);
+        railItems.add(item);
+    }
+
+    private void selectSection(int index) {
+        if (index < 0 || index >= sections.size()) index = SECTION_FILES;
+        for (int i = 0; i < sections.size(); i++) {
+            boolean selected = i == index;
+            sections.get(i).setVisibility(selected ? View.VISIBLE : View.GONE);
+            TextView item = railItems.get(i);
+            item.setTextColor(selected ? COLOR_ACCENT : COLOR_TEXT_SECONDARY);
+            item.setTypeface(Typeface.DEFAULT, selected ? Typeface.BOLD : Typeface.NORMAL);
+            item.setBackground(pressable(rounded(selected ? COLOR_ACCENT_TINT : 0, 0, 8)));
+        }
+        if (sectionScroll != null) sectionScroll.scrollTo(0, 0);
+        prefs.edit().putInt("launcher_section", index).apply();
+    }
+
+    private void updateSummaries() {
+        if (driverSummary == null || driverSpinner == null || audioPresetSpinner == null) return;
+        driverSummary.setText(getString(R.string.launcher_summary_driver, driverSpinner.getSelectedItem()));
+        audioSummary.setText(getString(R.string.launcher_summary_audio, audioPresetSpinner.getSelectedItem()));
+    }
+
+    private void exitApp() {
+        // Back/Home keep a started game alive in this process, and SDL cannot boot a
+        // second session in it, so leaving with a running game means ending the process.
+        if (!SDLActivity.isGameStorageLocked()) {
+            finishAndRemoveTask();
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setMessage(R.string.launcher_exit_running)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.launcher_exit, (dialog, which) -> {
+                finishAndRemoveTask();
+                android.os.Process.killProcess(android.os.Process.myPid());
+            })
+            .show();
     }
 
     private void refreshStatuses() {
@@ -219,9 +456,29 @@ public final class LauncherActivity extends Activity {
         installStatus.setText(stagedInstall
             ? getString(R.string.launcher_install_staged)
             : lastInstallState.message);
-        installStatus.setTextColor(lastInstallState.ready ? Color.rgb(25, 120, 55)
-            : stagedInstall ? Color.rgb(180, 110, 20) : Color.rgb(180, 45, 35));
-        playButton.setEnabled(lastInstallState.ready || stagedInstall);
+        installStatus.setTextColor(lastInstallState.ready ? COLOR_SUCCESS
+            : stagedInstall ? COLOR_WARNING : COLOR_DANGER);
+        boolean playable = lastInstallState.ready || stagedInstall;
+        playButton.setEnabled(playable);
+        playButton.setAlpha(playable ? 1f : 0.45f);
+
+        statusChips.removeAllViews();
+        if (lastInstallState.ready) {
+            statusChips.addView(chip(getString(R.string.launcher_chip_game_ready), COLOR_SUCCESS, COLOR_SUCCESS_BG));
+            boolean allDlc = lastInstallState.dlcCount == DLC_DIRECTORIES.length;
+            statusChips.addView(chip(getString(R.string.launcher_chip_dlc, lastInstallState.dlcCount,
+                DLC_DIRECTORIES.length), allDlc ? COLOR_SUCCESS : COLOR_TEXT_SECONDARY,
+                allDlc ? COLOR_SUCCESS_BG : COLOR_NEUTRAL_BG));
+        } else if (stagedInstall) {
+            statusChips.addView(chip(getString(R.string.launcher_chip_staged), COLOR_WARNING, COLOR_WARNING_BG));
+        } else {
+            statusChips.addView(chip(getString(R.string.launcher_chip_game_missing), COLOR_DANGER, COLOR_DANGER_BG));
+        }
+        // The home pane repeats the full explanation only when something needs action.
+        installSummary.setVisibility(lastInstallState.ready ? View.GONE : View.VISIBLE);
+        installSummary.setText(installStatus.getText());
+        installSummary.setTextColor(stagedInstall ? COLOR_WARNING : COLOR_DANGER);
+        updateSummaries();
 
         File installedMarker = new File(getFilesDir(), "turnip/last_imported_driver.txt");
         File recoveryMarker = new File(getFilesDir(), "turnip/vulkan_startup_state.txt");
@@ -232,16 +489,16 @@ public final class LauncherActivity extends Activity {
         String imported = readFirstLine(installedMarker);
         if (recoveryMarker.isFile()) {
             driverStatus.setText(R.string.launcher_driver_recovery);
-            driverStatus.setTextColor(Color.rgb(180, 45, 35));
+            driverStatus.setTextColor(COLOR_DANGER);
         } else if (pending > 0) {
             driverStatus.setText(getString(R.string.launcher_driver_pending, pending));
-            driverStatus.setTextColor(Color.DKGRAY);
+            driverStatus.setTextColor(COLOR_TEXT_SECONDARY);
         } else if (!imported.isEmpty()) {
             driverStatus.setText(getString(R.string.launcher_driver_installed, imported));
-            driverStatus.setTextColor(Color.DKGRAY);
+            driverStatus.setTextColor(COLOR_TEXT_SECONDARY);
         } else {
             driverStatus.setText(R.string.launcher_driver_builtin);
-            driverStatus.setTextColor(Color.DKGRAY);
+            driverStatus.setTextColor(COLOR_TEXT_SECONDARY);
         }
 
         File log = new File(AppStorage.transferRoot(this), "log.txt");
@@ -302,7 +559,7 @@ public final class LauncherActivity extends Activity {
         }
         return new InstallState(true, dlc == DLC_DIRECTORIES.length
             ? getString(R.string.game_ready_all_dlc)
-            : getString(R.string.game_ready_missing_dlc, dlc, DLC_DIRECTORIES.length));
+            : getString(R.string.game_ready_missing_dlc, dlc, DLC_DIRECTORIES.length), dlc);
     }
 
     private void loadSettings() {
@@ -543,20 +800,32 @@ public final class LauncherActivity extends Activity {
                 return;
             }
             updateStatus.setText(getString(R.string.update_available, update.version));
-            String notes = update.notes != null ? update.notes.trim() : "";
-            if (notes.length() > 3000) notes = notes.substring(0, 3000) + "…";
-            String message = getString(R.string.update_dialog_message, update.version,
-                formatBytes(update.size), notes);
-            new AlertDialog.Builder(this)
-                .setTitle(R.string.update_dialog_title)
-                .setMessage(message)
-                .setNegativeButton(R.string.update_later, null)
-                .setPositiveButton(R.string.update_download, (dialog, which) -> downloadUpdate(update))
-                .show();
+            // Background checks only raise the banner; a manual check opens the dialog.
+            pendingUpdate = update;
+            updateBanner.setText(getString(R.string.update_available, update.version) + "  " +
+                getString(R.string.update_download) + " ›");
+            updateBanner.setVisibility(View.VISIBLE);
+            if (manual) showUpdateDialog(update);
         });
     }
 
+    private void showUpdateDialog(UpdateManager.UpdateInfo update) {
+        String notes = update.notes != null ? update.notes.trim() : "";
+        if (notes.length() > 3000) notes = notes.substring(0, 3000) + "…";
+        String message = getString(R.string.update_dialog_message, update.version,
+            formatBytes(update.size), notes);
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.update_dialog_title)
+            .setMessage(message)
+            .setNegativeButton(R.string.update_later, null)
+            .setPositiveButton(R.string.update_download, (dialog, which) -> downloadUpdate(update))
+            .show();
+    }
+
     private void downloadUpdate(UpdateManager.UpdateInfo update) {
+        // Progress is reported in the Updates section, so show it there.
+        updateBanner.setVisibility(View.GONE);
+        selectSection(SECTION_UPDATES);
         updateButton.setEnabled(false);
         updateStatus.setText(R.string.update_downloading);
         UpdateManager.download(this, update, new UpdateManager.DownloadCallback() {
@@ -1060,63 +1329,50 @@ public final class LauncherActivity extends Activity {
         }
     }
 
-    private LinearLayout card(int titleId) {
-        LinearLayout card = column();
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundColor(Color.rgb(245, 245, 245));
-        LinearLayout.LayoutParams params = matchWrap();
-        params.bottomMargin = dp(12);
-        card.setLayoutParams(params);
-        TextView title = text(getString(titleId), 19, true);
-        title.setPadding(0, 0, 0, dp(7));
-        card.addView(title);
-        return card;
-    }
-
-    /**
-     * A card whose body collapses/expands when its header is tapped. The expanded
-     * state is remembered per card in the activity preferences. Adds itself to
-     * {@code page} and returns the body layout for the caller to populate.
-     */
-    private LinearLayout collapsibleCard(LinearLayout page, int titleId, String stateKey, boolean defaultExpanded) {
-        LinearLayout card = column();
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundColor(Color.rgb(245, 245, 245));
-        LinearLayout.LayoutParams params = matchWrap();
-        params.bottomMargin = dp(12);
-        card.setLayoutParams(params);
-
-        final LinearLayout body = column();
-        final boolean expanded = prefs.getBoolean(stateKey, defaultExpanded);
-        body.setVisibility(expanded ? View.VISIBLE : View.GONE);
-
-        final String label = getString(titleId);
-        final TextView title = text(label, 19, true);
-        title.setPadding(0, 0, 0, dp(7));
-        title.setText((expanded ? "▾  " : "▸  ") + label);
-        title.setOnClickListener(view -> {
-            boolean nowExpanded = body.getVisibility() != View.VISIBLE;
-            body.setVisibility(nowExpanded ? View.VISIBLE : View.GONE);
-            title.setText((nowExpanded ? "▾  " : "▸  ") + label);
-            prefs.edit().putBoolean(stateKey, nowExpanded).apply();
-        });
-
-        card.addView(title);
-        card.addView(body);
-        page.addView(card);
-        return body;
-    }
-
-    private Spinner settingSpinner(LinearLayout parent, int labelId, int arrayId) {
-        TextView label = text(getString(labelId), 14, true);
-        parent.addView(label);
+    private Spinner spinner(int arrayId) {
         Spinner spinner = new Spinner(this);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this, arrayId,
             android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
-        parent.addView(spinner, matchWrap());
         return spinner;
+    }
+
+    /** One compact "label - control" line with a hairline below it. */
+    private void settingRow(LinearLayout section, int labelId, View control) {
+        LinearLayout line = row();
+        line.setPadding(0, dp(4), 0, dp(4));
+        TextView label = text(getString(labelId), 14, false);
+        line.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f));
+        line.addView(control, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 3f));
+        section.addView(line, matchWrap());
+        section.addView(divider(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
+    }
+
+    private CompoundButton switchRow(LinearLayout section, int stringId) {
+        Switch toggle = new Switch(this);
+        toggle.setText(stringId);
+        toggle.setTextSize(14);
+        toggle.setTextColor(COLOR_TEXT);
+        toggle.setPadding(0, dp(10), 0, dp(10));
+        section.addView(toggle, matchWrap());
+        section.addView(divider(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
+        return toggle;
+    }
+
+    /** Lays out secondary actions two per row below the section's settings. */
+    private void buttonGrid(LinearLayout section, Button... buttons) {
+        for (int i = 0; i < buttons.length; i += 2) {
+            LinearLayout line = row();
+            line.setPadding(0, dp(8), 0, 0);
+            if (i + 1 < buttons.length) {
+                line.addView(buttons[i], spaced(0, 4));
+                line.addView(buttons[i + 1], spaced(4, 0));
+            } else {
+                line.addView(buttons[i], spaced(0, 0));
+            }
+            section.addView(line, matchWrap());
+        }
     }
 
     private void applyDriverPresetToLauncher() {
@@ -1129,21 +1385,60 @@ public final class LauncherActivity extends Activity {
 
     private TextView statusText() {
         TextView status = text("", 14, false);
-        status.setPadding(0, 0, 0, dp(7));
+        status.setTextColor(COLOR_TEXT_SECONDARY);
+        status.setPadding(0, 0, 0, dp(8));
         return status;
     }
 
-    private CheckBox checkBox(int stringId) {
-        CheckBox box = new CheckBox(this);
-        box.setText(stringId);
-        return box;
+    private TextView summaryText(int topPadding) {
+        TextView summary = text("", 13, false);
+        summary.setTextColor(COLOR_TEXT_SECONDARY);
+        summary.setPadding(0, topPadding, 0, 0);
+        summary.setSingleLine(true);
+        summary.setEllipsize(TextUtils.TruncateAt.END);
+        return summary;
+    }
+
+    private TextView hint(String value) {
+        TextView hint = text(value, 13, false);
+        hint.setTextColor(COLOR_TEXT_MUTED);
+        hint.setPadding(0, dp(8), 0, 0);
+        return hint;
+    }
+
+    private TextView chip(String value, int textColor, int background) {
+        TextView chip = text(value, 12, true);
+        chip.setTextColor(textColor);
+        chip.setBackground(rounded(background, 0, 6));
+        chip.setPadding(dp(8), dp(3), dp(8), dp(3));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.rightMargin = dp(6);
+        chip.setLayoutParams(params);
+        return chip;
     }
 
     private Button button(int stringId, View.OnClickListener listener) {
         Button button = new Button(this);
         button.setText(stringId);
         button.setAllCaps(false);
+        button.setTextSize(14);
+        button.setTextColor(COLOR_TEXT);
+        button.setStateListAnimator(null);
+        button.setBackground(pressable(rounded(COLOR_BUTTON, COLOR_DIVIDER, 10)));
+        button.setMinHeight(dp(42));
+        button.setMinimumHeight(dp(42));
+        button.setPadding(dp(10), dp(6), dp(10), dp(6));
         button.setOnClickListener(listener);
+        return button;
+    }
+
+    private Button primaryButton(int stringId, View.OnClickListener listener) {
+        Button button = button(stringId, listener);
+        button.setTextSize(20);
+        button.setTextColor(COLOR_ON_ACCENT);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setBackground(pressable(rounded(COLOR_ACCENT, 0, 14)));
         return button;
     }
 
@@ -1151,9 +1446,30 @@ public final class LauncherActivity extends Activity {
         TextView view = new TextView(this);
         view.setText(value);
         view.setTextSize(size);
-        view.setTextColor(Color.rgb(25, 25, 25));
+        view.setTextColor(COLOR_TEXT);
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return view;
+    }
+
+    private View divider() {
+        View line = new View(this);
+        line.setBackgroundColor(COLOR_DIVIDER);
+        return line;
+    }
+
+    private GradientDrawable rounded(int fill, int stroke, int radiusDp) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(fill);
+        shape.setCornerRadius(dp(radiusDp));
+        if (stroke != 0) shape.setStroke(dp(1), stroke);
+        return shape;
+    }
+
+    private Drawable pressable(GradientDrawable base) {
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(0xFFFFFFFF);
+        mask.setCornerRadius(base.getCornerRadius());
+        return new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), base, mask);
     }
 
     private LinearLayout column() {
@@ -1174,8 +1490,12 @@ public final class LauncherActivity extends Activity {
             LinearLayout.LayoutParams.WRAP_CONTENT);
     }
 
-    private LinearLayout.LayoutParams weighted() {
-        return new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+    /** Equal-width slot in a row with the given horizontal margins (dp). */
+    private LinearLayout.LayoutParams spaced(int leftDp, int rightDp) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.leftMargin = dp(leftDp);
+        params.rightMargin = dp(rightDp);
+        return params;
     }
 
     private int dp(int value) {

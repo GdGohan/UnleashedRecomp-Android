@@ -100,6 +100,7 @@ public final class ModSettingsActivity extends Activity {
         save.setOnClickListener(view -> save());
         page.addView(save, matchWrap());
         setContentView(page);
+        ImmersiveWindow.apply(this);
 
         try {
             loadSchema(schema);
@@ -440,5 +441,11 @@ public final class ModSettingsActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) ImmersiveWindow.apply(this);
     }
 }
