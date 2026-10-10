@@ -2,6 +2,8 @@
 
 ## 0.6.1 (test build, 2026-10-10)
 
+- The touch layout editor can resize each control on its own (issue #169): tap a control and use **-** / **+** to change only that control; tap empty space to resize the whole set as before. Sizes are saved in `touch_layout.ini` (version 2), which older builds still read.
+- Fixed **Arrange touch controls** while a game session was running in the background: the editor did not open, and the leftover request opened the editor instead of the game on the next launch from **Play**. The running game now picks up the request, and **Play** clears a stale one.
 - Restored the 0.5.3 Android audio work that 0.6.0 had dropped because `release/0.5.3` was never merged into `main` (issue #171): the **Default**, **AYN** and **POCO F8 Ultra (low latency)** audio presets in the launcher, the clocked-producer audio path and the AAudio route/background recovery. The stage name is again written to `log.txt`.
 - The 0.5.3 **Adreno 8xx Experimental** profile is superseded by the new **Adreno 8xx** profile; a saved `ExperimentalA8xx` selection opens as Adreno 8xx in the launcher. Restored the missing in-game label for **A725 Performance**.
 - DLC import with the base game installed now ignores a title update or game dump staged next to the DLC packs instead of rejecting the whole batch (issue #166). If a DLC import still fails, the error is shown, the staged copies are removed and the installed game starts; previously every launch failed until `to_install` was cleared by hand.

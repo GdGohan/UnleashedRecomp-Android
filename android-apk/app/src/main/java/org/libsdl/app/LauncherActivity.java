@@ -352,10 +352,12 @@ public final class LauncherActivity extends Activity {
             return;
         }
         if (prepareStagedArchives(editControls)) return;
-        if (editControls) {
-            try {
-                setMarker(new File(AppStorage.activeGameRoot(this), "touch_layout_edit.txt"), true, "1\n");
-            } catch (IOException exception) {
+        // Play clears a marker left by an editor request that never reached the game,
+        // so it cannot open the editor instead of the game on the next cold launch.
+        try {
+            setMarker(new File(AppStorage.activeGameRoot(this), "touch_layout_edit.txt"), editControls, "1\n");
+        } catch (IOException exception) {
+            if (editControls) {
                 showError(getString(R.string.error_layout_editor, FileErrorMessages.describe(this, exception)));
                 return;
             }
