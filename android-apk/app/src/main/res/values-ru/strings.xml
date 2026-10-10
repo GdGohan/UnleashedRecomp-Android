@@ -50,6 +50,18 @@
     <string name="launcher_gfx_capture">Записывать трассу GFXReconstruct (очень большой файл, медленно)</string>
     <string name="launcher_open_logs">Открыть логи и трассы</string>
     <string name="launcher_play">Запустить игру</string>
+    <string name="launcher_section_graphics">Графика</string>
+    <string name="launcher_section_updates">Обновления</string>
+    <string name="launcher_section_advanced">Дополнительно</string>
+    <string name="launcher_chip_game_ready">Игра готова</string>
+    <string name="launcher_chip_game_missing">Игра не установлена</string>
+    <string name="launcher_chip_staged">Пакеты ждут установки</string>
+    <string name="launcher_chip_dlc">DLC %1$d/%2$d</string>
+    <string name="launcher_summary_driver">Драйвер: %1$s</string>
+    <string name="launcher_summary_audio">Звук: %1$s</string>
+    <string name="launcher_quick_files">Файлы</string>
+    <string name="launcher_exit">Выход</string>
+    <string name="launcher_exit_running">Игра всё ещё работает в фоне. Выход закроет её, несохранённый прогресс будет потерян.</string>
     <string name="launcher_driver_pending">Пакетов драйвера для установки при следующем запуске: %1$d.</string>
     <string name="launcher_driver_installed">Доступен импортированный драйвер: %1$s</string>
     <string name="launcher_driver_builtin">Доступны системный и встроенные драйверы Turnip. Импортированный драйвер не найден.</string>
@@ -90,10 +102,16 @@
     <string name="error_install_no_mod">В выбранном источнике нет mod.ini — мод не найден.</string>
 
     <string-array name="driver_labels">
-        <item>Авто (рекомендуется)</item><item>Системный</item><item>Встроенный Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (эксперимент; sysmem+nobin)</item><item>Импортированный</item>
+        <item>Авто (рекомендуется)</item><item>Системный</item><item>Встроенный Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (эксперимент; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Импортированный</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Авто (рекомендуется)</item><item>GMEM</item><item>Sysmem</item>
+    </string-array>
+    <string name="launcher_audio">Звук</string>
+    <string name="launcher_audio_preset">Пресет звука</string>
+    <string name="launcher_audio_preset_hint">Выберите AYN, если звука нет с самого запуска игры (AYN Odin 2 / Thor и похожие консоли). Профиль POCO F8 Ultra включает экспериментальный низколатентный путь AAudio для этого устройства; на других устройствах возможны треск или пропадание звука. Применяется при следующем запуске.</string>
+    <string-array name="audio_preset_labels">
+        <item>Стандартный (рекомендуется)</item><item>AYN (портативные консоли)</item><item>POCO F8 Ultra (низкая задержка)</item>
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Авто</item><item>Всегда включены</item><item>Выключены</item>
@@ -171,6 +189,7 @@
     <string name="installer_missing_files">В выбранном источнике отсутствуют обязательные файлы. Выберите полный пакет игры, обновления или DLC.</string>
     <string name="installer_unknown_dlc">Не удалось определить тип DLC. Выберите поддерживаемый пакет DLC Sonic Unleashed для Xbox 360.</string>
     <string name="installer_failed">Не удалось установить выбранные пакеты. Проверьте исходные файлы, доступ к хранилищу и свободное место. Подробности в журнале.</string>
+    <string name="vulkan_device_lost">Графический драйвер перестал отвечать (Vulkan device lost). Выберите другой драйвер Vulkan в лаунчере и запустите игру снова.</string>
     <string name="installer_game_missing">Файлы игры не найдены. Скопируйте папки game, update и необязательную dlc в:\n%1$s\n\nМожно также импортировать ISO, обновление или DLC через лаунчер. После копирования перезапустите приложение.</string>
     <string name="error_file_empty">Выбранный файл пуст.</string>
     <string name="error_schema_size">Файл схемы мода отсутствует, пуст или слишком большой.</string>

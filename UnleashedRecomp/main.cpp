@@ -389,9 +389,11 @@ int main(int argc, char *argv[])
                         continue;
                     }
                     bool recognized = false;
+                    // Once the game is installed, staged game/update sources are ignored, so
+                    // duplicates of them (e.g. from repeated import attempts) are harmless.
                     if (Installer::parseGame(source))
                     {
-                        if (!input.gameSource.empty()) {
+                        if (!input.gameSource.empty() && !gameAlreadyInstalled) {
                             errorKey = "installer_duplicate_game";
                             throw std::runtime_error("Multiple base-game sources were selected.");
                         }
@@ -400,7 +402,7 @@ int main(int argc, char *argv[])
                     }
                     else if (Installer::parseUpdate(source))
                     {
-                        if (!input.updateSource.empty()) {
+                        if (!input.updateSource.empty() && !gameAlreadyInstalled) {
                             errorKey = "installer_duplicate_update";
                             throw std::runtime_error("Multiple title-update sources were selected.");
                         }
@@ -423,15 +425,27 @@ int main(int argc, char *argv[])
 
                 if (ec) fail("installer_io_failed", "Unable to read the staged files: " + ec.message());
                 else if (!invalidSource.empty()) fail("installer_source_invalid", "Unsupported or damaged installer source: " + invalidSource, invalidSource);
-                else if (gameAlreadyInstalled && (!input.gameSource.empty() || !input.updateSource.empty()))
+                else if (gameAlreadyInstalled && input.dlcSources.empty() && (!input.gameSource.empty() || !input.updateSource.empty()))
                     fail("installer_existing_game", "The base game is already installed. Import DLC packages separately.");
                 else if (!gameAlreadyInstalled && (input.gameSource.empty() || input.updateSource.empty()))
                     fail("installer_need_game_update", "The staged files must contain both the base game and its title update.");
                 else if (gameAlreadyInstalled && input.dlcSources.empty())
                     fail("installer_no_dlc", "No supported DLC packages were found in the staged files.");
-                else if (Installer::parseSources(input, journal, sources))
-                    installSucceeded = gameAlreadyInstalled ? Installer::installDLC(sources, root, journal)
-                        : Installer::install(sources, root, false, journal, std::chrono::seconds(0), [] { return true; });
+                else
+                {
+                    // DLC dumps and archives often carry the title update next to the packs
+                    // (issue #166). The installed game already has it, so install only the DLC.
+                    if (gameAlreadyInstalled && (!input.gameSource.empty() || !input.updateSource.empty()))
+                    {
+                        LOG_WARNING("The base game is already installed; ignoring the staged base game/title update and installing only the DLC packages.");
+                        input.gameSource.clear();
+                        input.updateSource.clear();
+                    }
+
+                    if (Installer::parseSources(input, journal, sources))
+                        installSucceeded = gameAlreadyInstalled ? Installer::installDLC(sources, root, journal)
+                            : Installer::install(sources, root, false, journal, std::chrono::seconds(0), [] { return true; });
+                }
             }
             catch (const std::exception &exception)
             {
@@ -470,7 +484,18 @@ int main(int argc, char *argv[])
                 const auto message = os::android::LocaliseMessage(errorKey, reason.c_str(), errorDetail);
                 SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GameWindow::GetTitle(),
                     message.c_str(), GameWindow::s_pWindow);
-                std::_Exit(1);
+
+                // A failed DLC import must not lock the user out of an installed game: the
+                // staged copies would fail the same way on every launch (issue #166).
+                if (!gameAlreadyInstalled)
+                    std::_Exit(1);
+
+                std::error_code removeEc;
+                std::filesystem::remove_all(stagingDir, removeEc);
+                if (removeEc)
+                    LOGFN_WARNING("Failed to remove the staging directory after a failed DLC import: {}", removeEc.message());
+                else
+                    LOG("Removed the staged packages after a failed DLC import; starting the installed game.");
             }
         }
     }

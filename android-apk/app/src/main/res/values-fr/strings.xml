@@ -43,6 +43,18 @@
     <string name="launcher_gfx_capture">Enregistrer une trace GFXReconstruct (très volumineux et lent)</string>
     <string name="launcher_open_logs">Ouvrir les journaux et captures</string>
     <string name="launcher_play">Lancer le jeu</string>
+    <string name="launcher_section_graphics">Graphismes</string>
+    <string name="launcher_section_updates">Mises à jour</string>
+    <string name="launcher_section_advanced">Avancé</string>
+    <string name="launcher_chip_game_ready">Jeu prêt</string>
+    <string name="launcher_chip_game_missing">Jeu non installé</string>
+    <string name="launcher_chip_staged">Paquets en attente</string>
+    <string name="launcher_chip_dlc">DLC %1$d/%2$d</string>
+    <string name="launcher_summary_driver">Pilote : %1$s</string>
+    <string name="launcher_summary_audio">Audio : %1$s</string>
+    <string name="launcher_quick_files">Fichiers</string>
+    <string name="launcher_exit">Quitter</string>
+    <string name="launcher_exit_running">Le jeu tourne encore en arrière-plan. Quitter le fermera et la progression non sauvegardée sera perdue.</string>
     <string name="launcher_driver_pending">%1$d paquet(s) de pilotes seront installés au prochain lancement.</string>
     <string name="launcher_driver_installed">Pilote importé disponible : %1$s</string>
     <string name="launcher_driver_builtin">Les pilotes Turnip intégrés et le pilote système sont disponibles. Aucun pilote importé trouvé.</string>
@@ -80,10 +92,16 @@
     <string name="error_install_no_mod">La source sélectionnée ne contient pas de mod.ini, aucun mod n\'a donc été trouvé.</string>
 
     <string-array name="driver_labels">
-        <item>Auto (recommandé)</item><item>Système</item><item>Turnip intégré</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (expérimental ; sysmem+nobin)</item><item>Importé</item>
+        <item>Auto (recommandé)</item><item>Système</item><item>Turnip intégré</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (expérimental ; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Importé</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Auto (recommandé)</item><item>GMEM</item><item>Sysmem</item>
+    </string-array>
+    <string name="launcher_audio">Audio</string>
+    <string name="launcher_audio_preset">Préréglage audio</string>
+    <string name="launcher_audio_preset_hint">Choisissez AYN si le jeu reste muet dès le lancement (AYN Odin 2 / Thor et consoles similaires). Le profil POCO F8 Ultra active une voie AAudio expérimentale à faible latence pour cet appareil; ailleurs, des grésillements ou une perte du son sont possibles. Prend effet au prochain démarrage.</string>
+    <string-array name="audio_preset_labels">
+        <item>Par défaut (recommandé)</item><item>AYN (consoles portables)</item><item>POCO F8 Ultra (faible latence)</item>
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Toujours activées</item><item>Désactivées</item>
@@ -169,6 +187,7 @@
     <string name="installer_missing_files">Des fichiers requis manquent dans la source choisie. Choisissez un paquet complet du jeu, de la mise à jour ou du DLC.</string>
     <string name="installer_unknown_dlc">Impossible d’identifier le type de DLC. Choisissez un paquet DLC pris en charge pour Sonic Unleashed sur Xbox 360.</string>
     <string name="installer_failed">Impossible d’installer les paquets choisis. Vérifiez les fichiers source, l’accès au stockage et l’espace libre. Les détails sont dans le journal.</string>
+    <string name="vulkan_device_lost">Le pilote GPU ne répond plus (Vulkan device lost). Choisissez un autre pilote Vulkan dans le lanceur et relancez le jeu.</string>
     <string name="installer_game_missing">Fichiers du jeu introuvables. Copiez les dossiers game, update et éventuellement dlc dans :\n%1$s\n\nVous pouvez aussi importer des ISO, mises à jour ou DLC dans le lanceur. Redémarrez l’application après la copie.</string>
     <string name="error_file_empty">Le fichier choisi est vide.</string>
     <string name="error_schema_size">Le fichier du schéma du mod est absent, vide ou trop volumineux.</string>

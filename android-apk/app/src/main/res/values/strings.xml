@@ -49,6 +49,18 @@
     <string name="launcher_gfx_capture">Record GFXReconstruct trace (very large and slow)</string>
     <string name="launcher_open_logs">Open logs and captures</string>
     <string name="launcher_play">Launch game</string>
+    <string name="launcher_section_graphics">Graphics</string>
+    <string name="launcher_section_updates">Updates</string>
+    <string name="launcher_section_advanced">Advanced</string>
+    <string name="launcher_chip_game_ready">Game ready</string>
+    <string name="launcher_chip_game_missing">Game not installed</string>
+    <string name="launcher_chip_staged">Packages staged</string>
+    <string name="launcher_chip_dlc">DLC %1$d/%2$d</string>
+    <string name="launcher_summary_driver">Driver: %1$s</string>
+    <string name="launcher_summary_audio">Audio: %1$s</string>
+    <string name="launcher_quick_files">Files</string>
+    <string name="launcher_exit">Exit</string>
+    <string name="launcher_exit_running">The game is still running in the background. Exiting closes it, and unsaved progress is lost.</string>
     <string name="launcher_driver_pending">%1$d driver package(s) will be installed on the next launch.</string>
     <string name="launcher_driver_installed">Imported driver available: %1$s</string>
     <string name="launcher_driver_builtin">Bundled Turnip drivers and the system driver are available. No imported driver found.</string>
@@ -89,10 +101,16 @@
     <string name="error_install_no_mod">The selected source does not contain a mod.ini, so no mod could be found in it.</string>
 
     <string-array name="driver_labels">
-        <item>Auto (recommended)</item><item>System</item><item>Bundled Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (experimental; sysmem+nobin)</item><item>Imported</item>
+        <item>Auto (recommended)</item><item>System</item><item>Bundled Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (experimental; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Imported</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Auto (recommended)</item><item>GMEM</item><item>Sysmem</item>
+    </string-array>
+    <string name="launcher_audio">Audio</string>
+    <string name="launcher_audio_preset">Audio preset</string>
+    <string name="launcher_audio_preset_hint">Choose AYN if the game has no sound from startup (AYN Odin 2 / Thor and similar handhelds). The POCO F8 Ultra profile uses an experimental low-latency AAudio path for that device; it may cause crackling or loss of sound elsewhere. Takes effect on the next launch.</string>
+    <string-array name="audio_preset_labels">
+        <item>Default (recommended)</item><item>AYN (handheld consoles)</item><item>POCO F8 Ultra (low latency)</item>
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Always on</item><item>Off</item>
@@ -170,6 +188,7 @@
     <string name="installer_missing_files">Required files are missing from the selected installer source. Choose a complete game, update or DLC package.</string>
     <string name="installer_unknown_dlc">The DLC type could not be identified. Choose a supported Sonic Unleashed Xbox 360 DLC package.</string>
     <string name="installer_failed">Could not install the selected packages. Check the source files, storage access and free space. Details are in the log.</string>
+    <string name="vulkan_device_lost">The GPU driver stopped responding (Vulkan device lost). Select another Vulkan driver in the launcher and start the game again.</string>
     <string name="installer_game_missing">Game files not found. Copy the game, update and optional dlc folders into:\n%1$s\n\nYou can also import ISO, update or DLC packages in the launcher. Restart the app after copying.</string>
     <string name="error_file_empty">The selected file is empty.</string>
     <string name="error_schema_size">The mod schema file is missing, empty or too large.</string>

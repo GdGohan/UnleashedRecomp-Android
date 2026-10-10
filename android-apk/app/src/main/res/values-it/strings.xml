@@ -43,6 +43,18 @@
     <string name="launcher_gfx_capture">Registra traccia GFXReconstruct (molto grande e lenta)</string>
     <string name="launcher_open_logs">Apri log e acquisizioni</string>
     <string name="launcher_play">Avvia il gioco</string>
+    <string name="launcher_section_graphics">Grafica</string>
+    <string name="launcher_section_updates">Aggiornamenti</string>
+    <string name="launcher_section_advanced">Avanzate</string>
+    <string name="launcher_chip_game_ready">Gioco pronto</string>
+    <string name="launcher_chip_game_missing">Gioco non installato</string>
+    <string name="launcher_chip_staged">Pacchetti in attesa</string>
+    <string name="launcher_chip_dlc">DLC %1$d/%2$d</string>
+    <string name="launcher_summary_driver">Driver: %1$s</string>
+    <string name="launcher_summary_audio">Audio: %1$s</string>
+    <string name="launcher_quick_files">File</string>
+    <string name="launcher_exit">Esci</string>
+    <string name="launcher_exit_running">Il gioco è ancora in esecuzione in background. Uscendo verrà chiuso e i progressi non salvati andranno persi.</string>
     <string name="launcher_driver_pending">%1$d pacchetto/i di driver verranno installati al prossimo avvio.</string>
     <string name="launcher_driver_installed">Driver importato disponibile: %1$s</string>
     <string name="launcher_driver_builtin">Sono disponibili i driver Turnip inclusi e il driver di sistema. Nessun driver importato trovato.</string>
@@ -80,10 +92,16 @@
     <string name="error_install_no_mod">L\'origine selezionata non contiene alcun mod.ini, quindi non è stata trovata nessuna mod.</string>
 
     <string-array name="driver_labels">
-        <item>Auto (consigliato)</item><item>Sistema</item><item>Turnip incluso</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (sperimentale; sysmem+nobin)</item><item>Importato</item>
+        <item>Auto (consigliato)</item><item>Sistema</item><item>Turnip incluso</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance (sperimentale; sysmem+nobin)</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>Importato</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>Auto (consigliato)</item><item>GMEM</item><item>Sysmem</item>
+    </string-array>
+    <string name="launcher_audio">Audio</string>
+    <string name="launcher_audio_preset">Preset audio</string>
+    <string name="launcher_audio_preset_hint">Scegli AYN se il gioco non ha audio fin dall’avvio (AYN Odin 2 / Thor e console simili). Il profilo POCO F8 Ultra attiva un percorso AAudio sperimentale a bassa latenza per quel dispositivo; altrove può causare crepitii o perdita dell’audio. Ha effetto al prossimo avvio.</string>
+    <string-array name="audio_preset_labels">
+        <item>Predefinito (consigliato)</item><item>AYN (console portatili)</item><item>POCO F8 Ultra (bassa latenza)</item>
     </string-array>
     <string-array name="touch_policy_labels">
         <item>Auto</item><item>Sempre attivi</item><item>Disattivati</item>
@@ -169,6 +187,7 @@
     <string name="installer_missing_files">Nella sorgente scelta mancano file necessari. Scegli un pacchetto completo del gioco, dell’aggiornamento o del DLC.</string>
     <string name="installer_unknown_dlc">Impossibile identificare il tipo di DLC. Scegli un pacchetto DLC supportato di Sonic Unleashed per Xbox 360.</string>
     <string name="installer_failed">Impossibile installare i pacchetti scelti. Controlla i file di origine, l’accesso allo spazio di archiviazione e lo spazio libero. I dettagli sono nel registro.</string>
+    <string name="vulkan_device_lost">Il driver della GPU ha smesso di rispondere (Vulkan device lost). Scegli un altro driver Vulkan nel launcher e avvia di nuovo il gioco.</string>
     <string name="installer_game_missing">File del gioco non trovati. Copia le cartelle game, update e, facoltativamente, dlc in:\n%1$s\n\nPuoi anche importare ISO, aggiornamenti o DLC nel launcher. Riavvia l’app dopo la copia.</string>
     <string name="error_file_empty">Il file selezionato è vuoto.</string>
     <string name="error_schema_size">Il file dello schema del mod è assente, vuoto o troppo grande.</string>

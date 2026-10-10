@@ -43,6 +43,18 @@
     <string name="launcher_gfx_capture">GFXReconstruct トレースを記録（非常に大きく低速）</string>
     <string name="launcher_open_logs">ログとキャプチャを開く</string>
     <string name="launcher_play">ゲームを起動</string>
+    <string name="launcher_section_graphics">グラフィック</string>
+    <string name="launcher_section_updates">アップデート</string>
+    <string name="launcher_section_advanced">詳細設定</string>
+    <string name="launcher_chip_game_ready">ゲーム準備完了</string>
+    <string name="launcher_chip_game_missing">ゲーム未インストール</string>
+    <string name="launcher_chip_staged">パッケージ待機中</string>
+    <string name="launcher_chip_dlc">DLC %1$d/%2$d</string>
+    <string name="launcher_summary_driver">ドライバー: %1$s</string>
+    <string name="launcher_summary_audio">オーディオ: %1$s</string>
+    <string name="launcher_quick_files">ファイル</string>
+    <string name="launcher_exit">終了</string>
+    <string name="launcher_exit_running">ゲームはバックグラウンドで実行中です。終了するとゲームも閉じ、保存していない進行状況は失われます。</string>
     <string name="launcher_driver_pending">%1$d 個のドライバーパッケージが次回起動時にインストールされます。</string>
     <string name="launcher_driver_installed">インポート済みドライバー: %1$s</string>
     <string name="launcher_driver_builtin">同梱の Turnip ドライバーとシステムドライバーが利用可能です。インポート済みドライバーはありません。</string>
@@ -80,10 +92,16 @@
     <string name="error_install_no_mod">選択したソースに mod.ini が含まれていないため、MODが見つかりませんでした。</string>
 
     <string-array name="driver_labels">
-        <item>自動（推奨）</item><item>システム</item><item>同梱 Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance（実験的・sysmem+nobin）</item><item>インポート済み</item>
+        <item>自動（推奨）</item><item>システム</item><item>同梱 Turnip</item><item>Adreno 710 (Vauzi)</item><item>A725 Performance（実験的・sysmem+nobin）</item><item>Adreno 8xx (Snapdragon 8 Elite; sysmem+nobin)</item><item>インポート済み</item>
     </string-array>
     <string-array name="render_mode_labels">
         <item>自動（推奨）</item><item>GMEM</item><item>Sysmem</item>
+    </string-array>
+    <string name="launcher_audio">オーディオ</string>
+    <string name="launcher_audio_preset">オーディオプリセット</string>
+    <string name="launcher_audio_preset_hint">起動時から音が出ない場合は AYN を選択してください（AYN Odin 2 / Thor など）。POCO F8 Ultra プロファイルは、この端末向けに試験的な低遅延 AAudio 経路を有効にします。他の端末では音割れや無音が発生する可能性があります。次回起動時に適用されます。</string>
+    <string-array name="audio_preset_labels">
+        <item>デフォルト（推奨）</item><item>AYN（携帯ゲーム機）</item><item>POCO F8 Ultra（低遅延）</item>
     </string-array>
     <string-array name="touch_policy_labels">
         <item>自動</item><item>常に表示</item><item>オフ</item>
@@ -169,6 +187,7 @@
     <string name="installer_missing_files">選択したソースに必要なファイルがありません。本編、更新、またはDLCの完全なパッケージを選択してください。</string>
     <string name="installer_unknown_dlc">DLCの種類を判別できませんでした。対応するXbox 360版Sonic UnleashedのDLCパッケージを選択してください。</string>
     <string name="installer_failed">選択したパッケージをインストールできませんでした。ソースファイル、保存先へのアクセス、空き容量を確認してください。詳細はログに記録されています。</string>
+    <string name="vulkan_device_lost">GPU ドライバーが応答しなくなりました（Vulkan device lost）。ランチャーで別の Vulkan ドライバーを選択し、ゲームを再起動してください。</string>
     <string name="installer_game_missing">ゲームファイルがありません。game、update、必要に応じてdlcフォルダーを次の場所にコピーしてください：\n%1$s\n\nランチャーからISO、更新、DLCパッケージをインポートすることもできます。コピー後にアプリを再起動してください。</string>
     <string name="error_file_empty">選択したファイルは空です。</string>
     <string name="error_schema_size">MODスキーマのファイルが存在しないか、空か、大きすぎます。</string>

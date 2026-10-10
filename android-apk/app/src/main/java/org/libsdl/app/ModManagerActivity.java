@@ -143,6 +143,7 @@ public final class ModManagerActivity extends Activity {
         page.addView(save, matchWrap());
 
         setContentView(page);
+        ImmersiveWindow.apply(this);
         reload();
     }
 
@@ -696,5 +697,11 @@ public final class ModManagerActivity extends Activity {
 
     private LinearLayout.LayoutParams squareButton() {
         return new LinearLayout.LayoutParams(dp(52), LinearLayout.LayoutParams.WRAP_CONTENT);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) ImmersiveWindow.apply(this);
     }
 }

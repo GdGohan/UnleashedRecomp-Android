@@ -43,6 +43,8 @@
 #if defined(__ANDROID__)
 #include <os/android/storage_android.h>
 #include <os/android/vulkan_driver_android.h>
+#include <android/native_window.h>
+#include <dlfcn.h>
 #endif
 
 #if defined(ASYNC_PSO_DEBUG) || defined(PSO_CACHING)
@@ -300,6 +302,7 @@ extern "C" {
     extern uint32_t g_plumePipelineBinds;
     extern uint32_t g_plumeBarrierCalls;
     extern uint32_t g_plumeFramebufferSets;
+    extern std::atomic<bool> g_plumeDeviceLost;
 }
 
 static uint32_t g_statDrawCalls;
@@ -1579,6 +1582,52 @@ static void CreateImGuiBackend()
 #endif
 }
 
+#if defined(__ANDROID__)
+// Without a frame-rate vote, high refresh rate phones (e.g. Realme GT 7 Pro at 120 Hz) keep
+// the game surface at 60 Hz, so FIFO presentation caps the game at 60 FPS whatever the FPS
+// option says. Vote the FPS option on every new ANativeWindow and whenever the option
+// changes. ANativeWindow_setFrameRate is API 30+, minSdk is 29, so it is resolved at runtime.
+static void UpdateAndroidFrameRateVote(plume::RenderWindow window)
+{
+    static plume::RenderWindow s_votedWindow = nullptr;
+    static int32_t s_votedFps = 0;
+    if (window == nullptr || (window == s_votedWindow && Config::FPS == s_votedFps))
+        return;
+
+    s_votedWindow = window;
+    s_votedFps = Config::FPS;
+
+    using SetFrameRateFn = int32_t (*)(ANativeWindow *, float, int8_t);
+    static SetFrameRateFn s_setFrameRate = []() -> SetFrameRateFn
+    {
+        void *library = dlopen("libnativewindow.so", RTLD_NOW | RTLD_LOCAL);
+        return library != nullptr ? reinterpret_cast<SetFrameRateFn>(dlsym(library, "ANativeWindow_setFrameRate")) : nullptr;
+    }();
+
+    if (s_setFrameRate == nullptr)
+    {
+        LOG_WARNING("ANativeWindow_setFrameRate is unavailable (Android 10); the display keeps its default refresh rate.");
+        return;
+    }
+
+    // FPS_MAX means uncapped: vote high and let the platform pick the fastest mode.
+    const float frameRate = (Config::FPS >= FPS_MIN && Config::FPS < FPS_MAX) ? float(Config::FPS) : 240.0f;
+    const int32_t result = s_setFrameRate(window, frameRate, 0 /* ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT */);
+    LOGF("Android frame-rate vote: {} FPS (result {}).", frameRate, result);
+}
+
+// After VK_ERROR_DEVICE_LOST every submit fails, so the image stays frozen while the game
+// logic and audio keep running (issue #170). Tell the user to pick another driver instead.
+[[noreturn]] static void ExitOnAndroidDeviceLost()
+{
+    LOGFN_ERROR("Vulkan device lost (configured driver mode {}). Stopping the game.", uint32_t(Config::VulkanDriver.Value));
+    const auto message = os::android::LocaliseMessage("vulkan_device_lost",
+        "The GPU driver stopped responding (Vulkan device lost). Select another Vulkan driver in the launcher and start the game again.");
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GameWindow::GetTitle(), message.c_str(), GameWindow::s_pWindow);
+    std::_Exit(1);
+}
+#endif
+
 static void CheckSwapChain()
 {
     g_swapChain->setVsyncEnabled(Config::VSync);
@@ -1592,6 +1641,8 @@ static void CheckSwapChain()
     plume::RenderWindow currentNativeWindow = GameWindow::GetAndroidNativeWindow();
     if (currentNativeWindow != g_swapChain->getWindow())
         g_swapChainValid = false;
+
+    UpdateAndroidFrameRateVote(currentNativeWindow);
 #endif
 
     if (!g_swapChainValid)
@@ -3065,6 +3116,11 @@ void Video::Present()
         g_queue->waitForCommandFence(g_commandFences[g_frame].get());
         g_frameFenceProfiler.End();
         g_commandListStates[g_frame] = false;
+
+#if defined(__ANDROID__)
+        if (g_plumeDeviceLost)
+            ExitOnAndroidDeviceLost();
+#endif
 
         // Update the GPU profiler with the results from the timestamps of the frame.
         g_queryPools[g_frame]->queryResults();
