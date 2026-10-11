@@ -2,6 +2,8 @@
 
 <img width="640" height="360" alt="715 Sem Título_20260710122452" src="https://github.com/user-attachments/assets/00fa9b4a-4761-4cad-9ecb-060a5bec815d" />
 
+[Promotional Page](https://gdgohan.github.io/UnleashedRecomp-Android/website)
+
 Play the Xbox 360 version of *Sonic Unleashed* natively on a supported Android device.
 
 This is an unofficial Android port of [Unleashed Recompiled](https://github.com/hedge-dev/UnleashedRecomp). It runs the game through static recompilation rather than emulating an Xbox 360, and includes an Android app, touch controls, gamepad support, a mod manager, and a custom Vulkan driver for many Qualcomm Adreno GPUs.
@@ -231,3 +233,5 @@ This port exists because many people shared code, testing time, traces, hardware
 - [Vauzi-17/710](https://github.com/Vauzi-17/710) and whitebelyash/AdrenoToolsDrivers — community Adreno 710/720/722 device information
 - Anthropic's Claude (Fable 5) — AI pair programming across the port: code, crash analysis, and reverse engineering under maintainer guidance
 - Everyone who tested unfinished builds, captured logs, reproduced GPU bugs, and reported what happened
+
+<img width="470" height="353" alt="090227_sound05" src="https://github.com/user-attachments/assets/c8e59650-3bd4-4c36-be4c-8887cb54a97b" />
