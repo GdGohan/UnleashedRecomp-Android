@@ -163,28 +163,6 @@ jobs:
           key: android-arm64
           max-size: 3G
 
-      - name: Extract zstd build
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
-        run: |
-          ZSTD_ARCHIVE="patches-repo/zstd.zip"
-          ZSTD_DIR="tools/XenosRecomp/thirdparty/zstd"
-
-          if [ ! -f "$ZSTD_ARCHIVE" ]; then
-            echo "::error::Zstandard archive not found: $ZSTD_ARCHIVE"
-            exit 1
-          fi
-
-          if [ ! -d "$ZSTD_DIR" ]; then
-            echo "::error::Zstandard directory not found: $ZSTD_DIR"
-            exit 1
-          fi
-
-          unzip -o "$ZSTD_ARCHIVE" -d "$ZSTD_DIR"
-          
-          cd -
-
-          echo "Zstandard archive extracted successfully."
-      
       - name: Apply custom Android changes and Patches
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.compile_apk != 'false' || github.event.inputs.code_mode == 'export'
         run: |
