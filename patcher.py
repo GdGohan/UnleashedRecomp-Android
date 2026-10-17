@@ -650,11 +650,60 @@ def patch_debug_signing():
         print("Debug signing adicionado:", gradle)
         
         
+CMAKE_LIB = ROOT / "UnleashedRecompLib/CMakeLists.txt"
+
+
+def patch_cmake_generation_target():
+    """
+    Adiciona o alvo UnleashedRecompGenerate ao CMake.
+
+    O alvo agrega as saídas das regras de geração existentes,
+    sem duplicar os comandos XenonRecomp, XenosRecomp ou x_decompress.
+    """
+
+    if not CMAKE_LIB.exists():
+        raise FileNotFoundError(
+            f"CMakeLists.txt não encontrado: {CMAKE_LIB}"
+        )
+
+    text = CMAKE_LIB.read_text(encoding="utf-8")
+
+    # Evita adicionar o mesmo alvo mais de uma vez.
+    if re.search(
+        r"add_custom_target\s*\(\s*UnleashedRecompGenerate\b",
+        text
+    ):
+        print("Alvo UnleashedRecompGenerate já existe.")
+        return
+
+    target = r'''
+
+# Aggregate the existing game-code generation outputs.
+add_custom_target(UnleashedRecompGenerate
+    DEPENDS
+        ${UNLEASHED_RECOMP_PPC_RECOMPILED_SOURCES}
+        "${CMAKE_CURRENT_SOURCE_DIR}/private/default_patched.xex"
+        "${CMAKE_CURRENT_SOURCE_DIR}/private/shader_decompressed.ar"
+        "${CMAKE_CURRENT_SOURCE_DIR}/shader/shader_cache.cpp"
+)
+'''
+
+    # Acrescenta o alvo ao final do CMakeLists.txt.
+    text = text.rstrip() + "\n" + target
+
+    CMAKE_LIB.write_text(text, encoding="utf-8")
+
+    print("Alvo UnleashedRecompGenerate adicionado ao CMake.")
+    
+    
 if __name__ == "__main__":
 
     print("Aplicando patch Android...")
     
     extract_resources()
+    
+    patch_cmake_generation_target()
+    print("Updated CMake generation target")
     
     # patch_package_name()
     # print("Pacote Gradle atualizado")
