@@ -712,7 +712,7 @@ if __name__ == "__main__":
     print("Updated Manifest")
     
     patch_cutout()
-    patch_sdlactivity()
+    # patch_sdlactivity()
     print("Updated cutout")
     
     patch_disable_obfuscation()
